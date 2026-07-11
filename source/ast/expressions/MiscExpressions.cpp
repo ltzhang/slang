@@ -249,8 +249,14 @@ bool ValueExpressionBase::checkLValue(const ASTContext& context, const ValueSymb
         }
     }
     else {
-        // Nets can't be assigned in procedural contexts.
         if (symbol.kind == SymbolKind::Net) {
+            // Nets can't be assigned in procedural contexts per the LRM. For synthesis
+            // compatibility, allow legacy Verilog that writes ordinary wires procedurally when
+            // the embedding application opts in; keep stricter net kinds rejected.
+            if (symbol.as<NetSymbol>().netType.netKind == NetType::Wire &&
+                context.scope->getCompilation().hasFlag(CompilationFlags::AllowProceduralWireAssign)) {
+                return true;
+            }
             context.addDiag(diag::AssignToNet, varRange);
             return false;
         }

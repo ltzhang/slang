@@ -130,9 +130,13 @@ enum class SLANG_EXPORT CompilationFlags {
     AllowLibModuleRedefinition = 1 << 16,
 
     /// Don't instantiate unreferenced modules to perform semantic checking on them.
-    IgnoreUninstantiatedModules = 1 << 17
+    IgnoreUninstantiatedModules = 1 << 17,
+
+    /// Allow procedural assignments to ordinary wire nets for synthesis compatibility with
+    /// legacy Verilog accepted by tools such as Yosys.
+    AllowProceduralWireAssign = 1 << 18
 };
-SLANG_BITMASK(CompilationFlags, IgnoreUninstantiatedModules)
+SLANG_BITMASK(CompilationFlags, AllowProceduralWireAssign)
 
 /// Contains various options that can control compilation behavior.
 struct SLANG_EXPORT CompilationOptions {
