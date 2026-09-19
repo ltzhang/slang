@@ -451,10 +451,17 @@ ER ForeachLoopStatement::evalImpl(EvalContext& context) const {
 
 ER ForeachLoopStatement::evalRecursive(EvalContext& context, const ConstantValue& cv,
                                        std::span<const LoopDim> currDims) const {
+    // `foreach (arr[])` binds to a single LoopDim with a null loopVar (the binder pushes the dim
+    // before it inspects the name and continues on an empty identifier), so the skip below can
+    // and does reach the end of the span. Indexing currDims[0] on an empty span was an
+    // out-of-bounds read; an omitted trailing dimension simply means there is nothing left to
+    // iterate, which is Success.
+    if (currDims.empty())
+        return ER::Success;
+
     // If there is no loop var just skip this index.
     auto& dim = currDims[0];
     if (!dim.loopVar) {
-        // Shouldn't ever be at the end here.
         return evalRecursive(context, nullptr, currDims.subspan(1));
     }
 

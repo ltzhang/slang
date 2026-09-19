@@ -37,6 +37,19 @@ ConstantValue* EvalContext::createLocal(const ValueSymbol* symbol, ConstantValue
 
     ConstantValue& result = stack.back().temporaries[symbol];
     if (!value) {
+        // Materializing a default value is an allocation the constant-size cap must admit. The
+        // generic precheck in Expression::eval only looks at the EXPRESSION's type, so an outer
+        // one-bit select over a call whose return variable is enormous cleared it and the wide
+        // intermediate was allocated here unchecked. Check the destination type itself.
+        //
+        // On rejection the diagnostic is emitted and the local is left as a "bad" ConstantValue,
+        // which is slang's own failure convention: every consumer tests the value before use, so
+        // the evaluation fails loudly instead of allocating past the cap.
+        const uint64_t bits = symbol->getType().getBitstreamWidth();
+        if (bits != 0 && !checkBitCount(bits, {symbol->location, symbol->location})) {
+            result = ConstantValue();
+            return &result;
+        }
         result = symbol->getType().getDefaultValue();
     }
     else {

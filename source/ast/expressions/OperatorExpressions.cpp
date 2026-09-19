@@ -2241,7 +2241,23 @@ ConstantValue ReplicationExpression::evalImpl(EvalContext& context) const {
             return nullptr;
         }
 
+        // A string replication is not covered by the generic precheck: StringType's bitstream
+        // width is 0, so `checkMaxValue` passes for every configured cap and the loop below would
+        // append `count` times with no result-size admission at all. Check the product BEFORE
+        // allocating anything.
+        const uint64_t unitBytes = uint64_t(v.str().size());
+        const uint64_t bytes = uint64_t(*optCount) * unitBytes;
+        // uint64 cannot overflow here: count <= INT32_MAX and a source-derived string length is
+        // far below 2^31, but assert the relation rather than assume it.
+        if (unitBytes != 0 && bytes / unitBytes != uint64_t(*optCount)) {
+            context.addDiag(diag::ConstEvalReplicationCountInvalid, count().sourceRange) << c;
+            return nullptr;
+        }
+        if (!context.checkBitCount(bytes * 8, sourceRange))
+            return nullptr;
+
         std::string result;
+        result.reserve(size_t(bytes));
         for (int32_t i = 0; i < *optCount; i++)
             result.append(v.str());
 
