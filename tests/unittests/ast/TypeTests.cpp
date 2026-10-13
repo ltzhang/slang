@@ -607,6 +607,27 @@ endmodule
     NO_COMPILATION_ERRORS;
 }
 
+TEST_CASE("Packed array of a named signed type is unsigned") {
+    // IEEE 1800-2023 7.4.1
+    auto tree = SyntaxTree::fromText(R"(
+module Top;
+    typedef logic signed [2:0] s_t;
+    s_t [1:0] a;
+    logic signed [1:0][2:0] b;
+endmodule
+)");
+
+    Compilation compilation;
+    const auto& instance = evalModule(tree, compilation).body;
+
+    const auto& aType = instance.find<VariableSymbol>("a").getType();
+    CHECK(!aType.isSigned());
+    CHECK(aType.getCanonicalType().as<PackedArrayType>().elementType.isSigned());
+    CHECK(instance.find<VariableSymbol>("b").getType().isSigned());
+
+    NO_COMPILATION_ERRORS;
+}
+
 TEST_CASE("Unpacked array ports") {
     auto tree = SyntaxTree::fromText(R"(
 module Top(logic f[3], g, h[0:1]);

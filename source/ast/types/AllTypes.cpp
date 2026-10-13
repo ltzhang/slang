@@ -673,8 +673,11 @@ void EnumValueSymbol::serializeTo(ASTSerializer& serializer) const {
 
 PackedArrayType::PackedArrayType(const Type& elementType, ConstantRange range,
                                  bitwidth_t fullWidth) :
+    // IEEE 1800-2023 7.4.1: the array viewed as a vector is signed only when declared
+    // signed (which marks the unnamed scalar elements signed); a named signed element
+    // type does not make the array signed.
     IntegralType(SymbolKind::PackedArrayType, "", SourceLocation(), fullWidth,
-                 elementType.isSigned(), elementType.isFourState()),
+                 elementType.isSigned() && !elementType.isAlias(), elementType.isFourState()),
     elementType(elementType), range(range) {
 }
 
