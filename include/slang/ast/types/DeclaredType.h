@@ -105,6 +105,11 @@ public:
                           bitmask<DeclaredTypeFlags> flags = DeclaredTypeFlags::None);
     DeclaredType(const DeclaredType&) = delete;
 
+    /// Whether @a type is a valid data type for a net of a built-in net type
+    /// (a four-state integral type, or a fixed-size unpacked array or unpacked
+    /// structure / union of valid net types; IEEE 1800-2023 6.7.1).
+    static bool isValidForNet(const Type& type);
+
     /// Resolves and returns the actual type.
     const Type& getType() const;
 

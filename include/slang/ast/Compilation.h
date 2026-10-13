@@ -134,9 +134,17 @@ enum class SLANG_EXPORT CompilationFlags {
 
     /// Allow procedural assignments to ordinary wire nets for synthesis compatibility with
     /// legacy Verilog accepted by tools such as Yosys.
-    AllowProceduralWireAssign = 1 << 18
+    AllowProceduralWireAssign = 1 << 18,
+
+    /// Determine the default kind of input and inout ports declared with an explicit
+    /// data type but no port kind as IEEE 1800-2023 23.2.2.3 specifies: a net of the
+    /// default net type (a wire when the default net type is 'none'), whereas without
+    /// this flag slang follows common tool practice and makes such input ports
+    /// variables. The rule also covers non-ANSI port declarations. A data type that is
+    /// not valid for a net (6.7.1, e.g. 'int' or 'real') keeps an input port a variable.
+    StrictPortKinds = 1 << 19
 };
-SLANG_BITMASK(CompilationFlags, AllowProceduralWireAssign)
+SLANG_BITMASK(CompilationFlags, StrictPortKinds)
 
 /// Contains various options that can control compilation behavior.
 struct SLANG_EXPORT CompilationOptions {

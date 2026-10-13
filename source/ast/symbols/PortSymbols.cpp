@@ -11,6 +11,8 @@
 #include "slang/ast/ASTVisitor.h"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/TypeProvider.h"
+#include "slang/ast/symbols/ParameterSymbols.h"
+#include "slang/ast/types/DeclaredType.h"
 #include "slang/diagnostics/DeclarationsDiags.h"
 #include "slang/diagnostics/ExpressionsDiags.h"
 #include "slang/diagnostics/LookupDiags.h"
@@ -32,6 +34,86 @@ const NetType& getDefaultNetType(const Scope& scope, SourceLocation location) {
 
     scope.addDiag(diag::ImplicitNetPortNoDefault, location);
     return scope.getCompilation().getWireNetType();
+}
+
+// Whether every unpacked dimension in the list has a fixed size, as a net requires
+// (6.7.1); dynamic, queue and wildcard-associative dimensions do not.
+bool hasFixedUnpackedDims(const SyntaxList<VariableDimensionSyntax>& dims) {
+    for (auto dim : dims) {
+        if (!dim->specifier || dim->specifier->kind != SyntaxKind::RangeDimensionSpecifier)
+            return false;
+    }
+    return true;
+}
+
+// For CompilationFlags::StrictPortKinds: whether a port's explicit data type is valid for
+// a net (6.7.1), decided before the port's own type is resolved. Named types are looked
+// up without reporting diagnostics; the port declaration's type resolution reports them.
+bool isNetDataType(const Scope& scope, const DataTypeSyntax& syntax) {
+    switch (syntax.kind) {
+        case SyntaxKind::LogicType:
+        case SyntaxKind::RegType:
+        case SyntaxKind::IntegerType:
+        case SyntaxKind::TimeType:
+            return true;
+        case SyntaxKind::EnumType: {
+            // The default base type of an enum is int, a two-state type.
+            auto base = syntax.as<EnumTypeSyntax>().baseType;
+            return base && isNetDataType(scope, *base);
+        }
+        case SyntaxKind::StructType:
+        case SyntaxKind::UnionType: {
+            // A packed structure or union is four-state when any member is (7.2.1, 7.3.1);
+            // an unpacked one is valid when all members are.
+            auto& su = syntax.as<StructUnionTypeSyntax>();
+            const bool packed = su.packed.valid();
+            bool any = false;
+            for (auto member : su.members) {
+                const bool valid = isNetDataType(scope, *member->type);
+                if (!packed) {
+                    if (!valid)
+                        return false;
+                    for (auto decl : member->declarators) {
+                        if (!hasFixedUnpackedDims(decl->dimensions))
+                            return false;
+                    }
+                }
+                any |= valid;
+            }
+            return packed ? any : true;
+        }
+        case SyntaxKind::NamedType: {
+            LookupResult result;
+            ASTContext context(scope, LookupLocation::max);
+            Lookup::name(*syntax.as<NamedTypeSyntax>().name, context, LookupFlags::Type, result);
+            const Symbol* found = result.found;
+            if (found && found->kind == SymbolKind::TypeParameter)
+                found = &found->as<TypeParameterSymbol>().getTypeAlias();
+            return found && found->isType() && DeclaredType::isValidForNet(found->as<Type>());
+        }
+        default:
+            return false;
+    }
+}
+
+// For CompilationFlags::StrictPortKinds: the net type of an input or inout port declared
+// with an explicit data type but no port kind (23.2.2.3), or nullptr when the port stays a
+// variable. The default net type 'none' yields a wire without a diagnostic: the port is
+// explicitly declared, so 22.8's ban on implicit nets does not apply to it.
+const NetType* strictDefaultPortNetType(const Scope& scope, ArgumentDirection direction,
+                                        const DataTypeSyntax& dataType,
+                                        const SyntaxList<VariableDimensionSyntax>& dims) {
+    auto& comp = scope.getCompilation();
+    if (!comp.hasFlag(CompilationFlags::StrictPortKinds))
+        return nullptr;
+    if (direction != ArgumentDirection::In && direction != ArgumentDirection::InOut)
+        return nullptr;
+    if (direction == ArgumentDirection::In &&
+        (!hasFixedUnpackedDims(dims) || !isNetDataType(scope, dataType))) {
+        return nullptr;
+    }
+    auto& netType = scope.getDefaultNetType();
+    return netType.isError() ? &comp.getWireNetType() : &netType;
 }
 
 std::tuple<const DefinitionSymbol*, std::string_view> getInterfacePortInfo(
@@ -181,6 +263,11 @@ public:
                                            (direction != ArgumentDirection::Ref &&
                                             header.dataType->kind == SyntaxKind::ImplicitType))) {
                     netType = &getDefaultNetType(scope, decl.name.location());
+                }
+                else if (!header.varKeyword) {
+                    // CompilationFlags::StrictPortKinds applies the rule above to inputs.
+                    netType = strictDefaultPortNetType(scope, direction, *header.dataType,
+                                                       decl.dimensions);
                 }
 
                 return add(decl, direction, header.dataType, netType, syntax.attributes);
@@ -531,6 +618,15 @@ private:
                             auto net = comp.emplace<NetSymbol>(name, declLoc,
                                                                result->as<NetType>());
                             setInternalSymbol(*net, decl, nullptr, info);
+                            break;
+                        }
+
+                        // CompilationFlags::StrictPortKinds: 23.2.2.1 admits only a net
+                        // port type for inout, and input follows the ANSI rule (23.2.2.3).
+                        if (auto netType = strictDefaultPortNetType(
+                                scope, info.direction, *varHeader.dataType, decl.dimensions)) {
+                            auto net = comp.emplace<NetSymbol>(name, declLoc, *netType);
+                            setInternalSymbol(*net, decl, varHeader.dataType, info);
                             break;
                         }
                     }

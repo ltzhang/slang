@@ -173,7 +173,7 @@ void DeclaredType::resolveType(const ASTContext& typeContext,
         checkType(initializerContext);
 }
 
-static bool isValidForNet(const Type& type) {
+bool DeclaredType::isValidForNet(const Type& type) {
     auto& ct = type.getCanonicalType();
     if (ct.isIntegral())
         return ct.isFourState();
