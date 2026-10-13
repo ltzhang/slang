@@ -260,6 +260,11 @@ ConstantValue ElementSelectExpression::evalImpl(EvalContext& context) const {
     if (valType.isString())
         return cv.getSlice(range->left, range->right, nullptr);
 
+    // evalIndex admits one past the end of a queue (a write may append there); reading
+    // it, like any out-of-bounds read, yields the element type's default value (7.10.1).
+    if (size_t(range->left) >= cv.size())
+        return type->getDefaultValue();
+
     return std::move(cv).at(size_t(range->left));
 }
 
