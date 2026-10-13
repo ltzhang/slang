@@ -500,6 +500,26 @@ ConstantValue ConversionExpression::convert(EvalContext& context, const Type& fr
             value.integer().setSigned(to.isSigned());
 
         auto result = value.convertToInt(to.getBitWidth(), to.isSigned(), to.isFourState());
+
+        // [5.7.1] An unsized literal whose leftmost bit is x or z is extended with x or z
+        // to the size of the expression containing it, not zero-filled.
+        if (expr && expr->kind == ExpressionKind::IntegerLiteral &&
+            expr->as<IntegerLiteral>().isDeclaredUnsized && value.isInteger() &&
+            result.isInteger() && to.isFourState()) {
+            auto& oldInt = value.integer();
+            const bitwidth_t oldWidth = oldInt.getBitWidth();
+            const bitwidth_t newWidth = result.integer().getBitWidth();
+            if (newWidth > oldWidth) {
+                const logic_t msb = oldInt[int32_t(oldWidth - 1)];
+                if (msb.isUnknown()) {
+                    const bitwidth_t extra = newWidth - oldWidth;
+                    auto fill = msb.value == logic_t::z.value ? SVInt::createFillZ(extra, false)
+                                                              : SVInt::createFillX(extra, false);
+                    result.integer().set(int32_t(newWidth - 1), int32_t(oldWidth), fill);
+                }
+            }
+        }
+
         if (checkImplicit) {
             if (value.isInteger()) {
                 auto& oldInt = value.integer();
