@@ -2409,6 +2409,19 @@ struct {
     CHECK(diags[0].code == diag::ConstantConversion);
 }
 
+TEST_CASE("Index keys of an assignment pattern for a descending range") {
+    // IEEE 1800-2023 10.9.1: a key names the element of that index.
+    ScriptSession session;
+    session.eval("logic [3:0] a = '{2:1'b1, 0:1'b1, default:1'b0};");
+    CHECK(session.eval("a").integer() == 5);
+    session.eval("logic [0:3] b = '{2:1'b1, default:1'b0};");
+    CHECK(session.eval("b").integer() == 2);
+    session.eval("int u[3:0] = '{2:5, default:0};");
+    CHECK(session.eval("u[2]").integer() == 5);
+    CHECK(session.eval("u").toString() == "[0,5,0,0]");
+    NO_SESSION_ERRORS;
+}
+
 TEST_CASE("foreach loop extended name eval") {
     ScriptSession session;
     session.eval("typedef int rt[2][2];");

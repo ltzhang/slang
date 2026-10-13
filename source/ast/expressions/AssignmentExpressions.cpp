@@ -1490,7 +1490,12 @@ Expression& StructuredAssignmentPatternExpression::forFixedArray(
     std::optional<const Expression*> cachedVal;
     auto arrayRange = type.getFixedRange();
 
-    for (int32_t i = arrayRange.lower(); i <= arrayRange.upper(); i++) {
+    // Elements are listed left to right, like a simple pattern's (the order evaluation
+    // and the constant value layout assume); for a descending range [3:0] the first
+    // element is index 3 (IEEE 1800-2023 10.9.1).
+    const int32_t step = arrayRange.isDescending() ? -1 : 1;
+    for (bitwidth_t k = 0; k < arrayRange.width(); k++) {
+        const int32_t i = arrayRange.left + int32_t(k) * step;
         // If we already have a setter for this index we don't have to do anything else.
         if (auto it = indexMap.find(i); it != indexMap.end()) {
             elements.push_back(it->second);
