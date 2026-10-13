@@ -492,7 +492,9 @@ std::tuple<const Expression*, const Type*> Expression::bindImplicitParam(
         // If integral, infer using rules mentioned above. Otherwise just take the type.
         if (lhsType->isIntegral()) {
             bitwidth_t bits = lhsType->getBitWidth();
-            if (expr.isUnsizedInteger())
+            const bool unbased = expr.kind == ExpressionKind::UnbasedUnsizedIntegerLiteral &&
+                                 comp.hasFlag(CompilationFlags::StrictImplicitParamWidth);
+            if (expr.isUnsizedInteger() && !unbased)
                 bits = std::max(bits, 32u);
 
             // Keep the signed flag but force four state.

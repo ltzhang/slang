@@ -142,9 +142,15 @@ enum class SLANG_EXPORT CompilationFlags {
     /// this flag slang follows common tool practice and makes such input ports
     /// variables. The rule also covers non-ANSI port declarations. A data type that is
     /// not valid for a net (6.7.1, e.g. 'int' or 'real') keeps an input port a variable.
-    StrictPortKinds = 1 << 19
+    StrictPortKinds = 1 << 19,
+
+    /// Give a parameter with no type or range whose value is an unbased unsized literal
+    /// ('0, '1, 'x, 'z) the 1-bit width of that literal in a self-determined context
+    /// (IEEE 1800-2023 6.20.2 with 5.7.1), whereas without this flag slang widens it to
+    /// 32 bits like an unsized integer literal.
+    StrictImplicitParamWidth = 1 << 20
 };
-SLANG_BITMASK(CompilationFlags, StrictPortKinds)
+SLANG_BITMASK(CompilationFlags, StrictImplicitParamWidth)
 
 /// Contains various options that can control compilation behavior.
 struct SLANG_EXPORT CompilationOptions {
