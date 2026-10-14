@@ -99,8 +99,11 @@ public:
                            bitmask<AssignFlags> flags) const;
     bool isEquivalentImpl(const RangeSelectExpression& rhs) const;
 
+    /// When @a unknownBase is given, an indexed part-select whose base has x/z bits sets
+    /// it (with a warning) instead of failing: the select is then invalid, reads the
+    /// type's default value and writes nothing (IEEE 1800-2023 11.5.1).
     std::optional<ConstantRange> evalRange(EvalContext& context, const ConstantValue& val,
-                                           bool enforceBounds) const;
+                                           bool enforceBounds, bool* unknownBase = nullptr) const;
 
     void serializeTo(ASTSerializer& serializer) const;
 

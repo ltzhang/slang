@@ -2936,9 +2936,12 @@ endmodule
     CHECK(diags[10].code == diag::RangeOOB);
     CHECK(diags[11].code == diag::ConstEvalFunctionIdentifiersMustBeLocal);
     CHECK(diags[12].code == diag::ConstEvalFunctionIdentifiersMustBeLocal);
-    CHECK(diags[13].code == diag::IndexValueInvalid);
+    // An x/z base makes an indexed part-select invalid (IEEE 1800-2023 11.5.1): a warning,
+    // the read gives the default value and the write is ignored (f3, f5); an x width
+    // stays an error (f4).
+    CHECK(diags[13].code == diag::IndexOOB);
     CHECK(diags[14].code == diag::IndexValueInvalid);
-    CHECK(diags[15].code == diag::IndexValueInvalid);
+    CHECK(diags[15].code == diag::IndexOOB);
     CHECK(diags[16].code == diag::ConstEvalDynamicArrayRange);
 }
 

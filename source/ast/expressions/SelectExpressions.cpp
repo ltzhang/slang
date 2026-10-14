@@ -685,7 +685,10 @@ ConstantValue RangeSelectExpression::evalImpl(EvalContext& context) const {
     if (!cv)
         return nullptr;
 
-    auto range = evalRange(context, cv, /* enforceBounds */ false);
+    bool unknownBase = false;
+    auto range = evalRange(context, cv, /* enforceBounds */ false, &unknownBase);
+    if (unknownBase)
+        return type->getDefaultValue();
     if (!range)
         return nullptr;
 
@@ -715,7 +718,12 @@ LValue RangeSelectExpression::evalLValueImpl(EvalContext& context) const {
     if (!value().type->hasFixedRange())
         loadedVal = lval.load();
 
-    auto range = evalRange(context, loadedVal, /* enforceBounds */ false);
+    bool unknownBase = false;
+    auto range = evalRange(context, loadedVal, /* enforceBounds */ false, &unknownBase);
+    if (unknownBase) {
+        lval.addIndexOutOfBounds(type->getDefaultValue());
+        return lval;
+    }
     if (!range)
         return nullptr;
 
@@ -729,7 +737,8 @@ LValue RangeSelectExpression::evalLValueImpl(EvalContext& context) const {
 
 std::optional<ConstantRange> RangeSelectExpression::evalRange(EvalContext& context,
                                                               const ConstantValue& val,
-                                                              bool enforceBounds) const {
+                                                              bool enforceBounds,
+                                                              bool* unknownBase) const {
     auto prevQ = context.getQueueTarget();
     if (val.isQueue())
         context.setQueueTarget(&val);
@@ -745,6 +754,11 @@ std::optional<ConstantRange> RangeSelectExpression::evalRange(EvalContext& conte
     std::optional<int32_t> li = cl.integer().as<int32_t>();
     std::optional<int32_t> ri = cr.integer().as<int32_t>();
     if (!li) {
+        if (unknownBase && selectionKind != RangeSelectionKind::Simple && cl.integer().hasUnknown()) {
+            context.addDiag(diag::IndexOOB, left().sourceRange) << cl << valueType;
+            *unknownBase = true;
+            return std::nullopt;
+        }
         context.addDiag(diag::IndexValueInvalid, left().sourceRange) << cl << valueType;
         return std::nullopt;
     }

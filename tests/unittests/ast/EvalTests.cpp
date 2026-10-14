@@ -2472,6 +2472,18 @@ endfunction
 )");
     CHECK(session.eval("f2(2)").integer() == SVInt(4, 2, false));
     CHECK(session.eval("f4(2)").toString() == "4'bxx10");
+
+    // An x/z base makes the indexed part-select invalid: it reads the default value and
+    // a write through it changes nothing (11.5.1).
+    session.eval(R"(
+function automatic logic [7:0] g(logic [3:0] i);
+    bit [3:0] v2 = 4'b1010;
+    logic [3:0] v4 = 4'b1010;
+    v4[i +: 2] = 2'b11;
+    return {v2[i +: 4], v4};
+endfunction
+)");
+    CHECK(session.eval("g(4'bx)").integer() == SVInt(8, 10, false));
 }
 
 TEST_CASE("foreach loop extended name eval") {
