@@ -1220,6 +1220,15 @@ private:
                                             flags | LookupFlags::NoUndeclaredError);
         if (!symbol)
             symbol = Lookup::unqualified(scope, port.name, flags);
+
+        // An implicit net that a later connection of this same instance declares is not
+        // declared prior to this implicit connection (23.3.2.3; .* is an implicit .name
+        // connection for every port, 23.3.2.4).
+        if (symbol && symbol->kind == SymbolKind::Net && symbol->template as<NetSymbol>().isImplicit &&
+            symbol->location.buffer() == range.start().buffer() && symbol->location > range.start() &&
+            instance.getSyntax() && symbol->location < instance.getSyntax()->sourceRange().end()) {
+            symbol = nullptr;
+        }
         if (!symbol) {
             // If this is a wildcard connection, we're allowed to use the port's default value,
             // if it has one.

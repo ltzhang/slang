@@ -1272,6 +1272,47 @@ endmodule
     CHECK(valueOf("i_after") == 2);
 }
 
+TEST_CASE("Wildcard port connection before the implicit net it would connect") {
+    // IEEE 1800-2023 23.3.2.3/23.3.2.4: .* is an implicit .name connection per port, and
+    // the name must be declared prior to it; an implicit net created by a later
+    // connection of the same instance is not, so the port's default is used.
+    auto tree = SyntaxTree::fromText(R"(
+module child(input wire source = 1'b0, input wire value = 1'b0, output wire result);
+    assign result = value;
+endmodule
+
+module before_net;
+    wire r;
+    child c(.source(value), .result(r), .*);
+endmodule
+
+module after_net;
+    wire r;
+    child c(.result(r), .*, .source(value));
+endmodule
+
+module top;
+    before_net b();
+    after_net a();
+endmodule
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+    NO_COMPILATION_ERRORS;
+
+    auto& root = compilation.getRoot();
+    auto valueConn = [&](std::string_view path) {
+        auto& c = root.lookupName<InstanceSymbol>(path);
+        auto conn = c.getPortConnection(c.body.getPortList()[1]->as<PortSymbol>());
+        REQUIRE(conn);
+        REQUIRE(conn->getExpression());
+        return conn->getExpression()->kind;
+    };
+    CHECK(valueConn("top.b.c") == ExpressionKind::NamedValue);  // the implicit net
+    CHECK(valueConn("top.a.c") != ExpressionKind::NamedValue);  // the default 1'b0
+}
+
 TEST_CASE("No default nettype warning") {
     auto tree = SyntaxTree::fromText(R"(
 `default_nettype none
