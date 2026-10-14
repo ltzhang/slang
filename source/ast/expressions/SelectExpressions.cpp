@@ -696,8 +696,14 @@ ConstantValue RangeSelectExpression::evalImpl(EvalContext& context) const {
         return value().type->getDefaultValue();
     }
 
-    return cv.getSlice(range->upper(), range->lower(),
-                       type->getArrayElementType()->getDefaultValue());
+    auto result = cv.getSlice(range->upper(), range->lower(),
+                              type->getArrayElementType()->getDefaultValue());
+
+    // Bits of a two-state vector outside its range read as 0, not x (IEEE 1800-2023
+    // 11.5.1 with 7.4.6: the default value of the type).
+    if (result.isInteger() && !type->isFourState())
+        result.integer().flattenUnknowns();
+    return result;
 }
 
 LValue RangeSelectExpression::evalLValueImpl(EvalContext& context) const {

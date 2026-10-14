@@ -2455,6 +2455,25 @@ TEST_CASE("Element of a signed packed array through a typedef is unsigned") {
     NO_SESSION_ERRORS;
 }
 
+TEST_CASE("Out-of-range part-select of a two-state vector reads 0") {
+    // IEEE 1800-2023 11.5.1 with 7.4.6: out-of-range bits read the type's default.
+    ScriptSession session;
+    session.eval(R"(
+function automatic bit [3:0] f2(int i);
+    bit [3:0] v = 4'b1010;
+    return v[i +: 4];
+endfunction
+)");
+    session.eval(R"(
+function automatic logic [3:0] f4(int i);
+    logic [3:0] v = 4'b1010;
+    return v[i +: 4];
+endfunction
+)");
+    CHECK(session.eval("f2(2)").integer() == SVInt(4, 2, false));
+    CHECK(session.eval("f4(2)").toString() == "4'bxx10");
+}
+
 TEST_CASE("foreach loop extended name eval") {
     ScriptSession session;
     session.eval("typedef int rt[2][2];");
