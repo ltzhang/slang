@@ -69,8 +69,10 @@ ER VariableDeclStatement::evalImpl(EvalContext& context) const {
     ConstantValue initial;
     if (auto initializer = symbol.getInitializer()) {
         // Initialization of static variables is skipped in constant functions.
-        // This is confusing so issue a warning.
-        if (symbol.lifetime == VariableLifetime::Static && !initializer->bad()) {
+        // This is confusing so issue a warning. Under StrictConstFuncStatics they are
+        // initialized in each call as in simulation (IEEE 1800-2023 13.4.3).
+        if (symbol.lifetime == VariableLifetime::Static && !initializer->bad() &&
+            !context.getCompilation().hasFlag(CompilationFlags::StrictConstFuncStatics)) {
             context.addDiag(diag::ConstEvalStaticSkipped, initializer->sourceRange);
         }
         else {

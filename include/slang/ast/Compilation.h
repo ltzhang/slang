@@ -148,9 +148,16 @@ enum class SLANG_EXPORT CompilationFlags {
     /// ('0, '1, 'x, 'z) the 1-bit width of that literal in a self-determined context
     /// (IEEE 1800-2023 6.20.2 with 5.7.1), whereas without this flag slang widens it to
     /// 32 bits like an unsized integer literal.
-    StrictImplicitParamWidth = 1 << 20
+    StrictImplicitParamWidth = 1 << 20,
+
+    /// Initialize static variables declared in a constant function as for normal
+    /// simulation in every constant function call (IEEE 1800-2023 13.4.3: "the variables
+    /// are initialized as they would be for normal simulation", and calls do not affect
+    /// each other), whereas without this flag slang skips their initializers (with the
+    /// static-skipped warning) and they start at their type's default value.
+    StrictConstFuncStatics = 1 << 21
 };
-SLANG_BITMASK(CompilationFlags, StrictImplicitParamWidth)
+SLANG_BITMASK(CompilationFlags, StrictConstFuncStatics)
 
 /// Contains various options that can control compilation behavior.
 struct SLANG_EXPORT CompilationOptions {

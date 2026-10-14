@@ -1754,6 +1754,29 @@ endfunction
     CHECK(diags[0].code == diag::ConstEvalStaticSkipped);
 }
 
+TEST_CASE("Static variables are initialized in consteval under StrictConstFuncStatics") {
+    // IEEE 1800-2023 13.4.3: initialized as for normal simulation, and one call has no
+    // effect on another.
+    CompilationOptions options;
+    options.flags |= CompilationFlags::StrictConstFuncStatics;
+    Bag bag(options);
+    ScriptSession session(bag);
+
+    session.eval(R"(
+function int foo(int k);
+    static int j = 1;
+    j = j + k;
+    return j;
+endfunction
+)");
+    session.eval("localparam int i = foo(2);");
+    session.eval("localparam int m = foo(3);");
+
+    CHECK(session.eval("i").integer() == 3);
+    CHECK(session.eval("m").integer() == 4);
+    NO_SESSION_ERRORS;
+}
+
 TEST_CASE("Complicated lvalue path") {
     ScriptSession session;
     session.eval(R"(
