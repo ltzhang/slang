@@ -721,6 +721,34 @@ endmodule
     CHECK(diags[3].code == diag::TooFewArguments);
 }
 
+TEST_CASE("assertcontrol module definition names") {
+    // IEEE 1800-2023 20.11: the list may name modules, which address every instance.
+    auto tree = SyntaxTree::fromText(R"(
+module leaf;
+endmodule
+interface ifc;
+endinterface
+module m;
+    leaf l();
+    int leaf2;
+    initial begin
+        $assertoff(0, leaf);
+        $assertcontrol(4, 15, 7, 0, leaf, l);
+        $assertoff(0, ifc); // error, not a module
+        $assertoff(0, nosuch); // error, undeclared
+    end
+endmodule
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+
+    auto& diags = compilation.getAllDiagnostics();
+    REQUIRE(diags.size() == 2);
+    CHECK(diags[0].code == diag::DefinitionUsedAsValue);
+    CHECK(diags[1].code == diag::UndeclaredIdentifier);
+}
+
 TEST_CASE("file i/o functions") {
     auto tree = SyntaxTree::fromText(R"(
 module m;

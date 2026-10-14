@@ -642,8 +642,29 @@ public:
             return SystemTaskBase::bindArgument(argIndex, context, syntax, args);
         }
 
-        return ArbitrarySymbolExpression::fromSyntax(context.getCompilation(),
-                                                     syntax.as<NameSyntax>(), context,
+        // The list may name a module, which applies the control to every instance of
+        // it (IEEE 1800-2023 20.11). A simple name that no lookup finds but that names
+        // a module definition refers to that definition.
+        auto& comp = context.getCompilation();
+        if (syntax.kind == SyntaxKind::IdentifierName) {
+            LookupResult result;
+            Lookup::name(syntax.as<NameSyntax>(), context,
+                         LookupFlags::ForceHierarchical | LookupFlags::NoSelectors |
+                             LookupFlags::AlwaysAllowUpward,
+                         result);
+            if (!result.found) {
+                auto name = syntax.as<IdentifierNameSyntax>().identifier.valueText();
+                auto def = comp.tryGetDefinition(name, *context.scope).definition;
+                if (def && def->kind == SymbolKind::Definition &&
+                    def->as<DefinitionSymbol>().definitionKind == DefinitionKind::Module) {
+                    return *comp.emplace<ArbitrarySymbolExpression>(*context.scope, *def,
+                                                                    comp.getVoidType(), nullptr,
+                                                                    syntax.sourceRange());
+                }
+            }
+        }
+
+        return ArbitrarySymbolExpression::fromSyntax(comp, syntax.as<NameSyntax>(), context,
                                                      LookupFlags::AlwaysAllowUpward);
     }
 
@@ -663,7 +684,8 @@ public:
             }
             else {
                 auto isScope = [](const Symbol& symbol) {
-                    return symbol.isScope() || symbol.kind == SymbolKind::Instance;
+                    return symbol.isScope() || symbol.kind == SymbolKind::Instance ||
+                           symbol.kind == SymbolKind::Definition;
                 };
 
                 if (args[i]->kind != ExpressionKind::ArbitrarySymbol ||
