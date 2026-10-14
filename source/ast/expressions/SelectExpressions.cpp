@@ -37,7 +37,9 @@ static const Type& getIndexedType(TTypeProvider& typeProvider, const ASTContext&
     const Type& ct = valueType.getCanonicalType();
     if (ct.isArray()) {
         auto& elemType = *ct.getArrayElementType();
-        if (valueType.kind == SymbolKind::PackedArrayType && valueType.isSigned())
+        // IEEE 1800-2023 7.4.1: the elements of a signed packed array are unsigned unless
+        // of a named type; the array may itself be named (a typedef).
+        if (ct.kind == SymbolKind::PackedArrayType && ct.isSigned())
             return elemType.makeUnsigned(typeProvider);
 
         return elemType;

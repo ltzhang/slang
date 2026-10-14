@@ -2422,6 +2422,16 @@ TEST_CASE("Index keys of an assignment pattern for a descending range") {
     NO_SESSION_ERRORS;
 }
 
+TEST_CASE("Element of a signed packed array through a typedef is unsigned") {
+    // IEEE 1800-2023 7.4.1
+    ScriptSession session;
+    session.eval("typedef logic signed [1:0][2:0] su_t;");
+    session.eval("su_t [1:0] c = 12'b100000_000000;");
+    CHECK(session.eval("(c[1][1] >>> 1) >> 2").integer() == 0);
+    CHECK(session.eval("(c[1] >>> 1) >> 5").integer() == 1);
+    NO_SESSION_ERRORS;
+}
+
 TEST_CASE("foreach loop extended name eval") {
     ScriptSession session;
     session.eval("typedef int rt[2][2];");
