@@ -6,7 +6,9 @@
 #include "slang/ast/EvalContext.h"
 #include "slang/ast/ValuePath.h"
 #include "slang/ast/expressions/AssignmentExpressions.h"
+#include "slang/ast/expressions/ConversionExpression.h"
 #include "slang/ast/expressions/LiteralExpressions.h"
+#include "slang/ast/expressions/MiscExpressions.h"
 #include "slang/ast/expressions/OperatorExpressions.h"
 #include "slang/ast/expressions/SelectExpressions.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
@@ -1225,6 +1227,49 @@ endmodule
     REQUIRE(diags.size() == 2);
     CHECK(diags[0].code == diag::CantModifyConst);
     CHECK(diags[1].code == diag::InvalidRefArg);
+}
+
+TEST_CASE("Implicit named port sees only imports before the instance") {
+    // IEEE 1800-2023 23.3.2.3 with 26.3: a wildcard import after the instance does not
+    // provide the name; the compilation-unit declaration does.
+    auto tree = SyntaxTree::fromText(R"(
+package p;
+    parameter int value = 2;
+endpackage
+
+parameter int value = 1;
+
+module child(input int value, output int result);
+    assign result = value;
+endmodule
+
+module top;
+    int r1, r2;
+    child i_before(.value, .result(r1));
+    import p::*;
+    child i_after(.value, .result(r2));
+endmodule
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+    NO_COMPILATION_ERRORS;
+
+    auto& top = compilation.getRoot().lookupName<InstanceSymbol>("top").body;
+    auto valueOf = [&](std::string_view inst) {
+        auto& child = top.find<InstanceSymbol>(inst);
+        auto conn = child.getPortConnection(child.body.getPortList()[0]->as<PortSymbol>());
+        REQUIRE(conn);
+        REQUIRE(conn->getExpression());
+        const Expression* e = conn->getExpression();
+        if (e->kind == ExpressionKind::Conversion)
+            e = &e->as<ConversionExpression>().operand();
+        REQUIRE(e->kind == ExpressionKind::NamedValue);
+        auto& sym = e->as<NamedValueExpression>().symbol;
+        return sym.getParentScope()->asSymbol().kind == SymbolKind::Package ? 2 : 1;
+    };
+    CHECK(valueOf("i_before") == 1);
+    CHECK(valueOf("i_after") == 2);
 }
 
 TEST_CASE("No default nettype warning") {

@@ -1212,7 +1212,14 @@ private:
         if (instance.body.flags.has(InstanceFlags::FromBind))
             flags |= LookupFlags::DisallowWildcardImport | LookupFlags::DisallowUnitReferences;
 
-        auto symbol = Lookup::unqualified(scope, port.name, flags);
+        // Look the name up as visible at the instance first (IEEE 1800-2023 23.3.2.3 with
+        // 26.3: a wildcard import declared after the instance does not provide it); only
+        // without such a symbol fall back to the whole scope, for the use-before-
+        // declaration diagnostic (or its compat relaxation) below.
+        auto symbol = Lookup::unqualifiedAt(scope, port.name, lookupLocation, range,
+                                            flags | LookupFlags::NoUndeclaredError);
+        if (!symbol)
+            symbol = Lookup::unqualified(scope, port.name, flags);
         if (!symbol) {
             // If this is a wildcard connection, we're allowed to use the port's default value,
             // if it has one.
