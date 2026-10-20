@@ -1947,11 +1947,11 @@ const RandSeqProductionSymbol::CaseProd& RandSeqProductionSymbol::createCaseProd
         switch (item->kind) {
             case SyntaxKind::StandardRsCaseItem: {
                 auto& sci = item->as<StandardRsCaseItemSyntax>();
-                auto pi = createProdItem(*sci.item, context);
-                for (auto es : sci.expressions) {
+                // One production per item (the items below take one each), however
+                // many expressions the item lists.
+                prods.push_back(createProdItem(*sci.item, context));
+                for (auto es : sci.expressions)
                     expressions.push_back(es);
-                    prods.push_back(pi);
-                }
                 break;
             }
             case SyntaxKind::DefaultRsCaseItem:

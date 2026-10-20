@@ -1481,6 +1481,49 @@ endmodule
     CHECK(diags[0].code == diag::ExprMustBeIntegral);
 }
 
+TEST_CASE("randsequence case items keep their own productions") {
+    auto tree = SyntaxTree::fromText(R"(
+module m;
+    initial begin
+        randsequence (main)
+            main : case (1) 1, 2: a; 3, 4, 5: b; default: c; endcase;
+            a : { };
+            b : { };
+            c : { };
+        endsequence
+    end
+endmodule
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+    NO_COMPILATION_ERRORS;
+
+    auto& body = compilation.getRoot()
+                     .lookupName<InstanceSymbol>("m")
+                     .body.membersOfType<ProceduralBlockSymbol>()
+                     .begin()
+                     ->getBody();
+    const Statement* st = &body;
+    while (st->kind == StatementKind::Block)
+        st = &st->as<BlockStatement>().body;
+    REQUIRE(st->kind == StatementKind::RandSequence);
+    auto& rs = st->as<RandSequenceStatement>();
+    REQUIRE(rs.firstProduction);
+    auto rules = rs.firstProduction->getRules();
+    REQUIRE(rules.size() == 1);
+    REQUIRE(rules[0].prods.size() == 1);
+    REQUIRE(rules[0].prods[0]->kind == RandSeqProductionSymbol::ProdKind::Case);
+    auto& cp = rules[0].prods[0]->as<RandSeqProductionSymbol::CaseProd>();
+    REQUIRE(cp.items.size() == 2);
+    CHECK(cp.items[0].expressions.size() == 2);
+    CHECK(cp.items[0].item.target->name == "a");
+    CHECK(cp.items[1].expressions.size() == 3);
+    CHECK(cp.items[1].item.target->name == "b");
+    REQUIRE(cp.defaultItem);
+    CHECK(cp.defaultItem->target->name == "c");
+}
+
 TEST_CASE("randsequence statements") {
     auto tree = SyntaxTree::fromText(R"(
 module m;
