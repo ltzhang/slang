@@ -492,6 +492,38 @@ endmodule
     CHECK(totalWidth == 2);
 }
 
+TEST_CASE("Multidimensional instance array packed slicing stride") {
+    // IEEE 1800-2023 23.3.3.5: the rightmost dimension varies fastest, so the
+    // stride of an outer index is the element count of the inner dimension.
+    auto tree = SyntaxTree::fromText(R"(
+module top(input logic [11:0] a);
+    sub u [2:1][0:2] (.d(a));
+endmodule
+module sub (input logic [1:0] d);
+endmodule
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+    NO_COMPILATION_ERRORS;
+
+    auto& outer = compilation.getRoot().lookupName<InstanceArraySymbol>("top.u");
+    REQUIRE(outer.elements.size() == 2);
+    auto check = [&](size_t i, size_t j, int32_t msb) {
+        auto& row = outer.elements[i]->as<InstanceArraySymbol>();
+        auto& inst = row.elements[j]->as<InstanceSymbol>();
+        auto* expr = inst.getPortConnections()[0]->getExpression();
+        REQUIRE(expr);
+        auto& sel = expr->as<RangeSelectExpression>();
+        EvalContext ctx(ASTContext(compilation.getRoot(), LookupLocation::max));
+        CHECK(sel.left().eval(ctx).integer() == msb);
+    };
+    check(1, 0, 11); // u[2][0]: leftmost element, most significant bits
+    check(1, 2, 7);  // u[2][2]
+    check(0, 0, 5);  // u[1][0]
+    check(0, 2, 1);  // u[1][2]: rightmost element, least significant bits
+}
+
 TEST_CASE("Instance array port connection errors") {
     auto tree = SyntaxTree::fromText(R"(
 module m(input logic a[5]);
