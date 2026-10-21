@@ -7,6 +7,8 @@
 //------------------------------------------------------------------------------
 #include "slang/parsing/NumberParser.h"
 
+#include <algorithm>
+
 #include "slang/diagnostics/LexerDiags.h"
 #include "slang/text/CharInfo.h"
 #include "slang/util/String.h"
@@ -116,6 +118,14 @@ int NumberParser::append(Token token, bool isFirst) {
             // been computed out of the token itself.
             if (isFirst) {
                 if (chars.length() == 1 && isLogicDigit(chars[0])) {
+                    addDigit(getLogicCharValue(chars[0]), 10);
+                    break;
+                }
+
+                // A single x or z digit followed by underscores (7'dz__): underscores are
+                // ignored anywhere but first (5.7.1), so it is that digit alone.
+                if (chars.length() > 1 && isLogicDigit(chars[0]) &&
+                    std::all_of(chars.begin() + 1, chars.end(), [](char c) { return c == '_'; })) {
                     addDigit(getLogicCharValue(chars[0]), 10);
                     break;
                 }
