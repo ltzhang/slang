@@ -1215,6 +1215,11 @@ const Type& Type::fromSyntax(Compilation& compilation, const DataTypeSyntax& nod
 
                 if (expr.type->isVoid())
                     context.addDiag(diag::TypeRefVoid, exprSyntax.sourceRange());
+
+                // type(type(x)) is x's type (IEEE 1800-2023 6.23), not the type of a
+                // type reference.
+                if (expr.kind == ExpressionKind::TypeReference)
+                    return expr.as<TypeReferenceExpression>().targetType;
             }
 
             return *expr.type;
