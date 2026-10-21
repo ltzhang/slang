@@ -11,6 +11,7 @@
 #include "slang/ast/Compilation.h"
 #include "slang/ast/Scope.h"
 #include "slang/ast/symbols/ParameterSymbols.h"
+#include "slang/ast/types/Type.h"
 #include "slang/diagnostics/DeclarationsDiags.h"
 #include "slang/syntax/AllSyntax.h"
 
@@ -280,6 +281,20 @@ const ParameterSymbolBase& ParameterBuilder::createParam(
                 // If there is an expression tree here use that as the initializer syntax.
                 // Otherwise we expect the value to override is already evaluated.
                 if (!it->second.expr) {
+                    // A defparam of a parameter declared without a type, range or
+                    // signing gives it the type of its value (6.20.2: the type of the
+                    // final value assigned), as an instance override does.
+                    auto typeSyntax = param->getDeclaredType()->getTypeSyntax();
+                    if (it->second.defparam && it->second.cv.isInteger() && typeSyntax &&
+                        typeSyntax->kind == SyntaxKind::ImplicitType &&
+                        typeSyntax->as<ImplicitTypeSyntax>().dimensions.empty() &&
+                        !typeSyntax->as<ImplicitTypeSyntax>().signing) {
+                        auto& iv = it->second.cv.integer();
+                        bitmask<IntegralFlags> flags = IntegralFlags::FourState;
+                        if (iv.isSigned())
+                            flags |= IntegralFlags::Signed;
+                        param->getDeclaredType()->setType(comp.getType(iv.getBitWidth(), flags));
+                    }
                     param->setValue(comp, it->second.cv,
                                     /* needsCoercion */ it->second.defparam == nullptr);
                     return *param;
