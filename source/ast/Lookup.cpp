@@ -2222,6 +2222,24 @@ void Lookup::qualified(const ScopedNameSyntax& syntax, const ASTContext& context
                 if (symbol.kind == SymbolKind::CompilationUnit) {
                     unqualifiedImpl(*current, name, location, first.range, flags, {}, result, scope,
                                     nullptr);
+                    // LRM 6.6: data shall be declared before they are used. Module
+                    // definitions take no part in the unit's member order, so compare
+                    // source positions for data declared in $unit.
+                    if (auto found = result.found;
+                        found && found->getParentScope() == current &&
+                        (found->kind == SymbolKind::Variable || found->kind == SymbolKind::Net ||
+                         found->kind == SymbolKind::Parameter)) {
+                        if (auto sm = compilation.getSourceManager()) {
+                            auto ref = syntax.getFirstToken().location();
+                            if (!sm->isBeforeInCompilationUnit(found->location, ref).value_or(true)) {
+                                auto& diag = result.addDiag(scope, diag::UsedBeforeDeclared,
+                                                            first.range);
+                                diag << name;
+                                diag.addNote(diag::NoteDeclarationHere, found->location);
+                                result.found = nullptr;
+                            }
+                        }
+                    }
                     break;
                 }
 

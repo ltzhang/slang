@@ -38,7 +38,8 @@ public:
             return comp.getErrorType();
 
         auto& type = *args[0]->type;
-        if (!type.isBitstreamType() && !type.isFloating() && !type.isUnpackedUnion())
+        const bool strict = comp.hasFlag(CompilationFlags::StrictBitsTypes);
+        if (!type.isBitstreamType() && (strict || (!type.isFloating() && !type.isUnpackedUnion())))
             return badArg(context, *args[0]);
 
         if (args[0]->kind == ExpressionKind::DataType && !type.isFixedSize()) {

@@ -155,9 +155,14 @@ enum class SLANG_EXPORT CompilationFlags {
     /// are initialized as they would be for normal simulation", and calls do not affect
     /// each other), whereas without this flag slang skips their initializers (with the
     /// static-skipped warning) and they start at their type's default value.
-    StrictConstFuncStatics = 1 << 21
+    StrictConstFuncStatics = 1 << 21,
+
+    /// Reject $bits of a floating-point value or an unpacked union (IEEE 1800-2023
+    /// 20.6.2: its argument is of a bit-stream type, 6.24.3, which neither is), whereas
+    /// without this flag slang follows common tool practice and returns their width.
+    StrictBitsTypes = 1 << 22
 };
-SLANG_BITMASK(CompilationFlags, StrictConstFuncStatics)
+SLANG_BITMASK(CompilationFlags, StrictBitsTypes)
 
 /// Contains various options that can control compilation behavior.
 struct SLANG_EXPORT CompilationOptions {

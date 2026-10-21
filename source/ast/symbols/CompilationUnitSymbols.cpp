@@ -215,6 +215,22 @@ void PackageSymbol::checkExplicitExports() const {
                     addDiag(diag::PackageExportNotImported, decl->item.range()) << lookupName;
             }
         }
+
+        // LRM 26.6: the declaration being exported shall be imported from the same
+        // package as the export names -- an import of the name from another package
+        // (even one that exports the same declaration) does not satisfy it.
+        bool imported = false, otherPackage = false;
+        for (auto& member : members()) {
+            auto ei = member.as_if<ExplicitImportSymbol>();
+            if (!ei || ei->isFromExport || ei->importName != lookupName)
+                continue;
+            if (ei->packageName == decl->package.valueText())
+                imported = true;
+            else
+                otherPackage = true;
+        }
+        if (otherPackage && !imported)
+            addDiag(diag::PackageExportNotImported, decl->item.range()) << lookupName;
     }
 }
 

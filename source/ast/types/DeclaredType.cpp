@@ -430,6 +430,17 @@ void DeclaredType::mergePortTypes(
     // for the packed one to look at.
     checkDims(unpackedDimensions, SymbolKind::FixedSizeUnpackedArrayType, false);
     checkDims(implicit.dimensions, SymbolKind::PackedArrayType, true);
+
+    // LRM 23.2.2.1: if the net or variable is declared as a vector, the range of the
+    // two declarations shall be identical -- a port declaration without one does not
+    // match a vector declaration.
+    if (implicit.dimensions.empty() && !destType->isError() &&
+        destType->getCanonicalType().kind == SymbolKind::PackedArrayType &&
+        destType->kind == SymbolKind::PackedArrayType) {
+        auto& diag = context.addDiag(diag::PortDeclDimensionsMismatch, location);
+        diag << sourceSymbol.name;
+        diag.addNote(diag::NoteDeclarationHere, sourceSymbol.location);
+    }
 }
 
 void DeclaredType::resolveAt(const ASTContext& context) const {
