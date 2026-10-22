@@ -1071,6 +1071,9 @@ const Type* GenericClassDefSymbol::getSpecializationImpl(
             if (sym.kind == SymbolKind::Parameter) {
                 auto& ps = sym.as<ParameterSymbol>();
                 paramValues.push_back(&ps.getValue(instRange));
+                // Equal values of different types (an untyped parameter takes the type
+                // of its value: #(1) and #(8'd1)) are different specializations.
+                typeParams.push_back(&ps.getType().getCanonicalType());
             }
             else {
                 auto& tps = sym.as<TypeParameterSymbol>();
