@@ -1731,18 +1731,30 @@ Expression& ReplicatedAssignmentPatternExpression::forStruct(
         return badExpr(comp, nullptr);
     }
 
+    // Each replicated item is the value of its own member (10.9.2), converted to that
+    // member's type: with more than one replica the pattern is expanded into one item per
+    // member, a simple pattern.
     bool bad = false;
     size_t index = 0;
     SmallVector<const Expression*> elems;
-    for (auto item : syntax.items) {
-        auto& expr = Expression::bindRValue(*types[index++], *item, {}, context);
-        elems.push_back(&expr);
-        bad |= expr.bad();
+    for (size_t r = 0; r < count; r++) {
+        for (auto item : syntax.items) {
+            auto& expr = Expression::bindRValue(*types[index++], *item, {}, context);
+            elems.push_back(&expr);
+            bad |= expr.bad();
+        }
     }
 
-    auto result = comp.emplace<ReplicatedAssignmentPatternExpression>(type, countExpr,
-                                                                      elems.copy(comp),
-                                                                      sourceRange);
+    Expression* result;
+    if (count > 1) {
+        result = comp.emplace<SimpleAssignmentPatternExpression>(type, /* isLValue */ false,
+                                                                 elems.copy(comp), sourceRange);
+    }
+    else {
+        result = comp.emplace<ReplicatedAssignmentPatternExpression>(type, countExpr,
+                                                                     elems.copy(comp),
+                                                                     sourceRange);
+    }
     if (bad)
         return badExpr(comp, result);
 
