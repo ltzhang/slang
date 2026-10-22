@@ -85,10 +85,12 @@ bool InstanceCacheKey::operator==(const InstanceCacheKey& other) const {
         SLANG_ASSERT(lp->symbol.kind == rp->symbol.kind);
 
         if (lp->symbol.kind == SymbolKind::Parameter) {
-            if (lp->symbol.as<ParameterSymbol>().getValue() !=
-                rp->symbol.as<ParameterSymbol>().getValue()) {
+            // Equal values of different types (an untyped parameter takes the type of
+            // its value: #(5) and #(8'd5)) are different specializations.
+            auto& lps = lp->symbol.as<ParameterSymbol>();
+            auto& rps = rp->symbol.as<ParameterSymbol>();
+            if (lps.getValue() != rps.getValue() || !lps.getType().isMatching(rps.getType()))
                 return false;
-            }
         }
         else {
             auto& lt = lp->symbol.as<TypeParameterSymbol>().targetType.getType();
