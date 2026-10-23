@@ -10,6 +10,7 @@
 #include "slang/ast/Compilation.h"
 #include "slang/ast/SystemSubroutine.h"
 #include "slang/ast/expressions/MiscExpressions.h"
+#include "slang/ast/expressions/SelectExpressions.h"
 #include "slang/ast/symbols/VariableSymbols.h"
 #include "slang/ast/types/Type.h"
 #include "slang/diagnostics/SysFuncsDiags.h"
@@ -533,7 +534,11 @@ public:
         if (!checkArgCount(context, false, args, range, 1, 6))
             return comp.getErrorType();
 
-        auto sym = args[0]->getSymbolReference(/* allowPacked */ false);
+        // A scalar net or a bit-select of a vector net (IEEE 1800-2023 D.2).
+        const Expression* netArg = args[0];
+        if (netArg->kind == ExpressionKind::ElementSelect)
+            netArg = &netArg->as<ElementSelectExpression>().value();
+        auto sym = netArg->getSymbolReference(/* allowPacked */ false);
         if (!sym || sym->kind != SymbolKind::Net)
             context.addDiag(diag::ExpectedNetRef, args[0]->sourceRange);
 
