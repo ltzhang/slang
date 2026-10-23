@@ -2232,6 +2232,28 @@ endmodule
     CHECK(diags[8].code == diag::ObjectTooLarge);
 }
 
+TEST_CASE("Large unpacked arrays with LargeUnpackedArrays") {
+    auto tree = SyntaxTree::fromText(R"(
+module m;
+    reg [63:0] mem [0:268435455];
+    logic a [2147483647];
+    initial mem[5] = 64'd1;
+endmodule
+)");
+
+    CompilationOptions options;
+    options.flags |= CompilationFlags::LargeUnpackedArrays;
+    Compilation compilation(options);
+    compilation.addSyntaxTree(tree);
+    NO_COMPILATION_ERRORS;
+
+    Compilation strict;
+    strict.addSyntaxTree(SyntaxTree::fromText(tree->root().toString()));
+    auto& diags = strict.getAllDiagnostics();
+    REQUIRE(diags.size() == 1);
+    CHECK(diags[0].code == diag::ObjectTooLarge);
+}
+
 TEST_CASE("Giant string literal overflow") {
     std::string source = R"(
 module m;

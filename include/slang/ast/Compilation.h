@@ -160,9 +160,15 @@ enum class SLANG_EXPORT CompilationFlags {
     /// Reject $bits of a floating-point value or an unpacked union (IEEE 1800-2023
     /// 20.6.2: its argument is of a bit-stream type, 6.24.3, which neither is), whereas
     /// without this flag slang follows common tool practice and returns their width.
-    StrictBitsTypes = 1 << 22
+    StrictBitsTypes = 1 << 22,
+
+    /// Allow fixed-size unpacked arrays whose total size exceeds 2^31 bytes (up to 2^40
+    /// bits; a simulator's memory models, e.g. a 2^28-entry 64-bit RAM), whereas without
+    /// this flag slang rejects them as an implementation limit. Bit-stream operations on
+    /// such an array still report the limit where they need its whole width.
+    LargeUnpackedArrays = 1 << 23
 };
-SLANG_BITMASK(CompilationFlags, StrictBitsTypes)
+SLANG_BITMASK(CompilationFlags, LargeUnpackedArrays)
 
 /// Contains various options that can control compilation behavior.
 struct SLANG_EXPORT CompilationOptions {

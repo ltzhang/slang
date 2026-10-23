@@ -767,8 +767,10 @@ const Type& FixedSizeUnpackedArrayType::fromDim(BumpAllocator& alloc, const ASTC
     auto selectableWidth = checkedMulU64(elementType.getSelectableWidth(), dim.width());
     auto bitstreamWidth = checkedMulU64(elementType.getBitstreamWidth(), dim.width());
 
-    if (!selectableWidth || selectableWidth > MaxBitWidth || !bitstreamWidth ||
-        bitstreamWidth > MaxBitWidth) {
+    const uint64_t limit = context.getCompilation().hasFlag(CompilationFlags::LargeUnpackedArrays)
+                               ? (uint64_t(1) << 40)
+                               : MaxBitWidth;
+    if (!selectableWidth || selectableWidth > limit || !bitstreamWidth || bitstreamWidth > limit) {
         context.addDiag(diag::ObjectTooLarge, sourceRange.get());
         return ErrorType::Instance;
     }
