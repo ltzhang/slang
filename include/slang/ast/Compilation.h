@@ -618,6 +618,12 @@ public:
     /// Returns the DPI exports collected during elaboration.
     std::span<const DPIExport> getDPIExports() const { return dpiExports; }
 
+    /// Every valid DPI export directive, including those that share a C identifier with
+    /// another export in a different scope (IEEE 1800-2023 35.5.4 allows that when the
+    /// signatures match; the calling context selects one). getDPIExports() lists only the
+    /// first per C identifier.
+    std::span<const DPIExport> getAllDPIExports() const { return allDpiExports; }
+
     /// Tracks the existence of an out-of-block declaration (method or constraint) in the
     /// given scope. This can later be retrieved by calling findOutOfBlockDecl().
     void addOutOfBlockDecl(const Scope& scope, const syntax::ScopedNameSyntax& name,
@@ -1067,6 +1073,7 @@ private:
 
     // Resolved DPI exports collected during elaboration.
     std::vector<DPIExport> dpiExports;
+    std::vector<DPIExport> allDpiExports;
 
     // A list of bind directives we've encountered during elaboration.
     std::vector<std::pair<const syntax::BindDirectiveSyntax*, const Scope*>> bindDirectives;

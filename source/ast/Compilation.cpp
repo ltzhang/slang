@@ -2036,6 +2036,8 @@ void Compilation::checkDPIMethods(std::span<const SubroutineSymbol* const> dpiIm
 
             if (shouldRecordResolved)
                 dpiExports.push_back(DPIExport{&sub, std::string(cId), syntax});
+            if (scopeInserted)
+                allDpiExports.push_back(DPIExport{&sub, std::string(cId), syntax});
         }
     }
 }
