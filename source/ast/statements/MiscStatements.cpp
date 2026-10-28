@@ -627,10 +627,11 @@ Statement& ProceduralAssignStatement::fromSyntax(Compilation& compilation,
     if (assign.kind == ExpressionKind::Assignment) {
         auto& lval = assign.as<AssignmentExpression>().left();
         if (isForce) {
-            if (!isValidForceLVal(lval, context, false)) {
+            // BadProceduralForce is a warning (commercial tools accept, e.g., a force of a
+            // variable's part-select): the statement stays valid; a tool that treats the
+            // diagnostic as an error rejects the design anyway.
+            if (!isValidForceLVal(lval, context, false))
                 context.addDiag(diag::BadProceduralForce, lval.sourceRange);
-                return badStmt(compilation, result);
-            }
         }
         else {
             if (!isValidAssignLVal(lval)) {
@@ -666,10 +667,8 @@ Statement& ProceduralDeassignStatement::fromSyntax(Compilation& compilation,
         return badStmt(compilation, result);
 
     if (isRelease) {
-        if (!isValidForceLVal(lvalue, ctx, false)) {
-            ctx.addDiag(diag::BadProceduralForce, lvalue.sourceRange);
-            return badStmt(compilation, result);
-        }
+        if (!isValidForceLVal(lvalue, ctx, false))
+            ctx.addDiag(diag::BadProceduralForce, lvalue.sourceRange);  // (a warning, as for force)
     }
     else {
         if (!isValidAssignLVal(lvalue)) {
