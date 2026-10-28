@@ -2352,6 +2352,19 @@ void Lookup::reportUndeclared(const Scope& initialScope, std::string_view name, 
         return;
     }
 
+    // An upward hierarchical name in the body standing for a virtual interface type
+    // resolves (or is reported) in each real instance of the interface (IEEE 1800-2023
+    // 23.8); the virtual body has no instantiation context to search.
+    if (isHierarchical) {
+        for (auto s = &initialScope; s; s = s->asSymbol().getParentScope()) {
+            if (s->asSymbol().kind == SymbolKind::InstanceBody) {
+                if (s->asSymbol().as<InstanceBodySymbol>().flags.has(InstanceFlags::Virtual))
+                    return;
+                break;
+            }
+        }
+    }
+
     // If we observed a wildcard import we couldn't resolve, we shouldn't report an
     // error for an undeclared identifier because maybe it's supposed to come from that package.
     // In particular it's important that we do this because when we first look at a

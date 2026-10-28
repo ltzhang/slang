@@ -57,10 +57,14 @@ enum class SLANG_EXPORT InstanceFlags : uint8_t {
     /// The instance is the target of a bind instantiation.
     TargetedByBind = 1 << 3,
 
+    /// The instance stands for a virtual interface type (createVirtual): it has no place in
+    /// the instance hierarchy, so upward hierarchical names in it may not resolve.
+    Virtual = 1 << 4,
+
     /// Flags that prevent caching of this instance in the elaboration cache.
     PreventsCaching = Uninstantiated | FromBind | ParentFromBind
 };
-SLANG_BITMASK(InstanceFlags, TargetedByBind)
+SLANG_BITMASK(InstanceFlags, Virtual)
 
 /// Common functionality for module, interface, program, and primitive instances.
 class SLANG_EXPORT InstanceSymbolBase : public Symbol {
