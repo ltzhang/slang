@@ -1140,6 +1140,8 @@ void Driver::addParseOptions(Bag& bag) const {
 
     ParserOptions poptions;
     poptions.languageVersion = languageVersion;
+    poptions.unsizedDigitWidths = options.compat == CompatMode::Vcs ||
+                                  options.compat == CompatMode::All;
     if (options.maxParseDepth.has_value())
         poptions.maxRecursionDepth = *options.maxParseDepth;
 

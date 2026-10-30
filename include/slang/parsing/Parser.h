@@ -135,6 +135,11 @@ struct SLANG_EXPORT ParserOptions {
 
     /// The version of the SystemVerilog language to use.
     LanguageVersion languageVersion = LanguageVersion::Default;
+
+    /// An unsized based literal whose digits need more than 32 bits takes the width of all
+    /// of its digits, leading zeros included (4 bits per hex digit), as VCS does; by
+    /// default it takes the minimum width (IEEE 1800-2023 5.7.1: "at least 32 bits").
+    bool unsizedDigitWidths = false;
 };
 
 /// Implements a full syntax parser for SystemVerilog.

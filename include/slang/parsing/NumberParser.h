@@ -23,7 +23,8 @@ namespace slang::parsing {
 
 class NumberParser {
 public:
-    NumberParser(Diagnostics& diagnostics, BumpAllocator& alloc, LanguageVersion languageVersion);
+    NumberParser(Diagnostics& diagnostics, BumpAllocator& alloc, LanguageVersion languageVersion,
+                 bool unsizedDigitWidths = false);
 
     struct IntResult {
         Token size;
@@ -181,6 +182,8 @@ private:
     void reportIntOverflow(Token token);
 
     bitwidth_t sizeBits = 0;
+    uint32_t digitCount = 0; // every digit of the value, leading zeros included
+    bool unsizedDigitWidths = false;
     LiteralBase literalBase = LiteralBase::Binary;
     LanguageVersion languageVersion;
     SourceLocation firstLocation;

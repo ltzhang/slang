@@ -30,13 +30,15 @@ static logic_t getLogicCharValue(char c) {
 }
 
 NumberParser::NumberParser(Diagnostics& diagnostics, BumpAllocator& alloc,
-                           LanguageVersion languageVersion) :
-    languageVersion(languageVersion), diagnostics(diagnostics), alloc(alloc) {
+                           LanguageVersion languageVersion, bool unsizedDigitWidths) :
+    unsizedDigitWidths(unsizedDigitWidths), languageVersion(languageVersion),
+    diagnostics(diagnostics), alloc(alloc) {
 }
 
 void NumberParser::startVector(Token baseToken, Token sizeToken) {
     hasUnknown = false;
     valid = true;
+    digitCount = 0;
     digits.clear();
     text.clear();
 
@@ -264,6 +266,11 @@ Token NumberParser::finishValue(Token firstToken, bool singleToken, bool isNegat
         if (!digits[0].isUnknown())
             bits += (bitwidth_t)std::bit_width(digits[0].value);
 
+        // Unsized, every digit counts (ParserOptions::unsizedDigitWidths).
+        if (sizeBits == 0 && unsizedDigitWidths && uint64_t(digitCount) * multiplier > 32)
+            bits = (bitwidth_t)std::min<uint64_t>(uint64_t(digitCount) * multiplier,
+                                                  uint64_t(SVInt::MAX_BITS) + 1);
+
         if (bits > sizeBits) {
             if (sizeBits == 0) {
                 if (bits > SVInt::MAX_BITS) {
@@ -287,6 +294,7 @@ Token NumberParser::finishValue(Token firstToken, bool singleToken, bool isNegat
 }
 
 void NumberParser::addDigit(logic_t digit, int maxValue) {
+    ++digitCount;
     // Leading zeros obviously don't count towards our bit limit, so
     // only count them if we've seen other non-zero digits
     if (digit.isUnknown()) {
