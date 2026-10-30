@@ -37,7 +37,7 @@ TEST_CASE("Functions -- body params") {
     auto tree = SyntaxTree::fromText(R"(
 module m;
     function automatic foo;
-        input i;
+        input [0:0] i;  // (the same range as below, LRM 23.2.2.1)
         output logic [1:0] baz;
         const ref int asdf;
         logic [$bits(baz) - 2:0] i;

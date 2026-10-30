@@ -194,7 +194,7 @@ module test(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r);
 
     input logic g;      // Error, collides with variable g below
     input h;
-    output i;
+    output i;           // Error, `wire [2:0] i` below is a vector (LRM 23.2.2.1)
     output j;           // Error, collides with parameter j below
     input unsigned k;   // Error, type isn't integral
 
@@ -257,8 +257,10 @@ endmodule
     CHECK((it++)->code == diag::InOutPortCannotBeVariable);
     CHECK((it++)->code == diag::RefPortMustBeVariable);
     CHECK((it++)->code == diag::Redefinition);
+    CHECK((it++)->code == diag::PortDeclDimensionsMismatch);
     CHECK((it++)->code == diag::RedefinitionDifferentType);
     CHECK((it++)->code == diag::CantDeclarePortSigned);
+    CHECK((it++)->code == diag::PortDeclDimensionsMismatch);
     CHECK((it++)->code == diag::PortDeclDimensionsMismatch);
     CHECK(it == diags.end());
 }

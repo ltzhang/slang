@@ -1327,7 +1327,7 @@ endmodule
 TEST_CASE("Multi assign through ref ports 4") {
     auto& code = R"(
 module m(a);
-    ref a;
+    ref [3:0] a;  // (the same range in both declarations, LRM 23.2.2.1)
     logic [3:0] a;
 
     always_comb a[3] = 1;

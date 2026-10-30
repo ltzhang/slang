@@ -1888,7 +1888,7 @@ package p9;
     export p8::baz;
     import p1::x;
     export p1::x;
-    export p6::x;
+    export p6::x; // Error, x is not imported from p6 (LRM 26.6)
     export p1::x;
 endpackage
 
@@ -1929,12 +1929,15 @@ endmodule
 
     auto diags = compilation.getAllDiagnostics().filter(
         {diag::StaticInitOrder, diag::StaticInitValue});
-    REQUIRE(diags.size() == 5);
+    // (p9's `export p6::x` names a package p9 does not import x from: LRM 26.6, the fork's
+    // strict export check, PackageExportNotImported)
+    REQUIRE(diags.size() == 6);
     CHECK(diags[0].code == diag::Redefinition);
     CHECK(diags[1].code == diag::UnknownPackage);
     CHECK(diags[2].code == diag::UnknownPackageMember);
-    CHECK(diags[3].code == diag::ImportNameCollision);
-    CHECK(diags[4].code == diag::UnknownPackageMember);
+    CHECK(diags[3].code == diag::PackageExportNotImported);
+    CHECK(diags[4].code == diag::ImportNameCollision);
+    CHECK(diags[5].code == diag::UnknownPackageMember);
 }
 
 TEST_CASE("Hierarchical lookup of type name") {
