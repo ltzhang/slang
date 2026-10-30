@@ -392,6 +392,16 @@ Expression& ConversionExpression::fromSyntax(Compilation& comp, const CastExpres
             return *operand;
         }
     }
+    else if (operand->kind == ExpressionKind::UnbasedUnsizedIntegerLiteral && type->isIntegral()) {
+        // LRM 5.7.1: '0, '1, 'x and 'z fill the width of their context, and a cast acts as an
+        // assignment to its type (6.24.1): to an enum (not assignment compatible with the
+        // literal), the width of its base type -- `e'('1)` of a 3-bit enum is 3'b111, not one
+        // bit zero-extended.
+        auto& ct = type->getCanonicalType();
+        auto& base = ct.kind == SymbolKind::EnumType ? ct.as<EnumType>().baseType : *type;
+        contextDetermined(context, operand, nullptr, base, syntax.apostrophe.range(),
+                          ConversionKind::Explicit);
+    }
     else {
         selfDetermined(context, operand);
     }

@@ -2798,3 +2798,15 @@ TEST_CASE("Eval scalar bit select") {
     CHECK(diags[1].code == diag::CannotIndexScalar);
     CHECK(diags[2].code == diag::CannotIndexScalar);
 }
+
+TEST_CASE("Unbased unsized literal cast to an enum takes the base type's width") {
+    // LRM 5.7.1, 6.24.1: '1 fills the cast's width; an enum target is not assignment
+    // compatible with the literal, so its base type gives the width (3'b111, not 3'b001).
+    ScriptSession session;
+    session.eval("typedef enum logic [2:0] {A, B, C} e_t;");
+    session.eval("typedef struct packed { e_t s; logic [3:0] t; } info_t;");
+    CHECK(session.eval("e_t'('1)").integer() == 7);
+    CHECK(session.eval("e_t'('0)").integer() == 0);
+    CHECK(session.eval("info_t'('{s: e_t'('1), t: '1})").integer() == 127);
+    NO_SESSION_ERRORS;
+}
