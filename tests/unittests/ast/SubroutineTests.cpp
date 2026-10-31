@@ -738,6 +738,37 @@ function,(*;*)output
     compilation.getAllDiagnostics();
 }
 
+TEST_CASE("Subroutine call names a later declaration of the scope") {
+    // LRM 23.8.1: the call resolves in the whole scope, so the later variable or event
+    // hides the outer function and is not callable.
+    auto tree = SyntaxTree::fromText(R"(
+function void value;
+endfunction
+
+task other;
+endtask
+
+module test;
+    initial value();
+    initial other();
+    integer value;
+    event other;
+endmodule
+
+module ok;
+    initial value();
+endmodule
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+
+    auto& diags = compilation.getAllDiagnostics();
+    REQUIRE(diags.size() == 2);
+    CHECK(diags[0].code == diag::ExpressionNotCallable);
+    CHECK(diags[1].code == diag::ExpressionNotCallable);
+}
+
 TEST_CASE("Constant function calling a function by hierarchical name") {
     auto tree = SyntaxTree::fromText(R"(
 module m1;

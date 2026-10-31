@@ -1899,6 +1899,14 @@ void Lookup::unqualifiedImpl(const Scope& scope, std::string_view name, LookupLo
                     break;
                 case SymbolKind::Variable:
                 case SymbolKind::FormalArgument:
+                    // A subroutine call names the scope's own member even when it is declared
+                    // later (LRM 23.8.1: subroutine names resolve after the whole scope is
+                    // known), so a later variable hides an outer subroutine and the call is an
+                    // error (as VCS reports it).
+                    if (flags.has(LookupFlags::AllowDeclaredAfter) &&
+                        flags.has(LookupFlags::AlwaysAllowUpward)) {
+                        break;
+                    }
                     // If we find a variable that's declared before use, then use that instead of
                     // the one that's declared after use. We only need to do this if
                     // AllowDeclaredAfter is enabled because if it's not, then we end up looking
@@ -2231,7 +2239,8 @@ void Lookup::qualified(const ScopedNameSyntax& syntax, const ASTContext& context
                          found->kind == SymbolKind::Parameter)) {
                         if (auto sm = compilation.getSourceManager()) {
                             auto ref = syntax.getFirstToken().location();
-                            if (!sm->isBeforeInCompilationUnit(found->location, ref).value_or(true)) {
+                            if (!sm->isBeforeInCompilationUnit(found->location, ref)
+                                     .value_or(true)) {
                                 auto& diag = result.addDiag(scope, diag::UsedBeforeDeclared,
                                                             first.range);
                                 diag << name;
