@@ -34,6 +34,9 @@ public:
 
         /// Extra constraint restrictions that apply, if any.
         std::span<const std::string_view> constraintRestrictions;
+
+        /// Whether a restriction list was given (possibly empty: `with ()`).
+        bool restricted = false;
     };
 
     /// Additional context that applies to system subroutine calls.

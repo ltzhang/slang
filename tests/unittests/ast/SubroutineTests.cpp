@@ -3,7 +3,13 @@
 
 #include "Test.h"
 
+#include "slang/ast/Constraints.h"
+#include "slang/ast/expressions/CallExpression.h"
+#include "slang/ast/expressions/ConversionExpression.h"
+#include "slang/ast/expressions/MiscExpressions.h"
+#include "slang/ast/expressions/OperatorExpressions.h"
 #include "slang/ast/statements/LoopStatements.h"
+#include "slang/ast/statements/MiscStatements.h"
 #include "slang/ast/symbols/BlockSymbols.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/ast/symbols/InstanceSymbols.h"
@@ -736,6 +742,32 @@ function,(*;*)output
 
     // Just check no crash.
     compilation.getAllDiagnostics();
+}
+
+TEST_CASE("Randomize with an empty restriction list binds every name in the calling scope") {
+    // LRM 18.7.1: with () restricts the class-scope lookup to no names at all.
+    auto tree = SyntaxTree::fromText(R"(
+class C;
+    rand int x;
+    int lo = -100;
+endclass
+
+function automatic int f(C obj, int lo);
+    return obj.randomize() with () { obj.x > lo; };
+endfunction
+
+function automatic int g(C obj, int lo);
+    return obj.randomize() with { x > lo; };
+endfunction
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+
+    // Only g's 'lo' binds to the class member (the shadowing warning); f's is the argument.
+    auto& diags = compilation.getAllDiagnostics();
+    REQUIRE(diags.size() == 1);
+    CHECK(diags[0].code == diag::RandomizeConstraintShadow);
 }
 
 TEST_CASE("Subroutine call names a later declaration of the scope") {

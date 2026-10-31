@@ -567,6 +567,7 @@ Expression& CallExpression::createSystemCall(
                     }
 
                     randInfo.constraintRestrictions = names.copy(argContext.getCompilation());
+                    randInfo.restricted = true;
                 }
 
                 callInfo.extraInfo = randInfo;
@@ -642,6 +643,7 @@ Expression& CallExpression::createSystemCall(
 
             auto& randInfo = std::get<2>(callInfo.extraInfo);
             randomizeDetails.nameRestrictions = randInfo.constraintRestrictions;
+            randomizeDetails.restricted = randInfo.restricted;
             randInfo.inlineConstraints = &Constraint::bind(*withClause->constraints, argContext);
         }
     }
@@ -688,7 +690,8 @@ ConstantValue CallExpression::evalImpl(EvalContext& context) const {
     if (isHierarchical && !context.flags.has(EvalFlags::IsScript)) {
         // LRM 13.4.3: constant functions shall not contain hierarchical references. A function
         // of an interface instance stays callable (`i.getP()` in a parameter, as upstream).
-        const Symbol* body = symbol.getParentScope() ? &symbol.getParentScope()->asSymbol() : nullptr;
+        const Symbol* body = symbol.getParentScope() ? &symbol.getParentScope()->asSymbol()
+                                                     : nullptr;
         const bool iface = body && body->kind == SymbolKind::InstanceBody &&
                            body->as<InstanceBodySymbol>().getDefinition().definitionKind ==
                                DefinitionKind::Interface;
@@ -784,6 +787,7 @@ bool CallExpression::isEquivalentImpl(const CallExpression& rhs) const {
             if (bool(lrc.inlineConstraints) != bool(rrc.inlineConstraints) ||
                 (lrc.inlineConstraints &&
                  !lrc.inlineConstraints->isEquivalentTo(*rrc.inlineConstraints)) ||
+                lrc.restricted != rrc.restricted ||
                 !std::ranges::equal(lrc.constraintRestrictions, rrc.constraintRestrictions)) {
                 return false;
             }

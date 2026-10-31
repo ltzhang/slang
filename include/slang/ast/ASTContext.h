@@ -287,6 +287,10 @@ public:
         /// tried in class-scope.
         std::span<const std::string_view> nameRestrictions;
 
+        /// Whether the call has a restriction list at all: `with ()` restricts every
+        /// name to the calling scope (LRM 18.7.1), unlike a `with` without one.
+        bool restricted = false;
+
         /// A set of variables for a scope randomize call that should be
         /// treated as a rand variable.
         flat_hash_set<const Symbol*> scopeRandVars;
