@@ -15,6 +15,7 @@
 #include "slang/ast/expressions/MiscExpressions.h"
 #include "slang/ast/expressions/SelectExpressions.h"
 #include "slang/ast/symbols/ClassSymbols.h"
+#include "slang/ast/symbols/InstanceSymbols.h"
 #include "slang/ast/symbols/SubroutineSymbols.h"
 #include "slang/diagnostics/ConstEvalDiags.h"
 #include "slang/diagnostics/ExpressionsDiags.h"
@@ -684,6 +685,18 @@ ConstantValue CallExpression::evalImpl(EvalContext& context) const {
     const SubroutineSymbol& symbol = *std::get<0>(subroutine);
     if (!checkConstant(context, symbol, sourceRange))
         return nullptr;
+    if (isHierarchical && !context.flags.has(EvalFlags::IsScript)) {
+        // LRM 13.4.3: constant functions shall not contain hierarchical references. A function
+        // of an interface instance stays callable (`i.getP()` in a parameter, as upstream).
+        const Symbol* body = symbol.getParentScope() ? &symbol.getParentScope()->asSymbol() : nullptr;
+        const bool iface = body && body->kind == SymbolKind::InstanceBody &&
+                           body->as<InstanceBodySymbol>().getDefinition().definitionKind ==
+                               DefinitionKind::Interface;
+        if (!iface) {
+            context.addDiag(diag::ConstEvalHierarchicalName, sourceRange) << symbol.name;
+            return nullptr;
+        }
+    }
 
     // Evaluate all argument in the current stack frame.
     SmallVector<ConstantValue, 4> args;

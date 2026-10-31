@@ -1147,6 +1147,9 @@ Expression& Expression::bindLookupResult(Compilation& comp, LookupResult& result
             withClause = nullptr;
 
             if (result.flags.has(LookupResultFlags::IsHierarchical)) {
+                if (expr->kind == ExpressionKind::Call)
+                    expr->as<CallExpression>().isHierarchical = true;
+
                 // A call to a subroutine via a hierarchical name needs to be counted
                 // as a potential "hierachical assignment" since we will need to
                 // descend into the call during analysis to find assignments.

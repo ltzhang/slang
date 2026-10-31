@@ -737,3 +737,27 @@ function,(*;*)output
     // Just check no crash.
     compilation.getAllDiagnostics();
 }
+
+TEST_CASE("Constant function calling a function by hierarchical name") {
+    auto tree = SyntaxTree::fromText(R"(
+module m1;
+    function integer f1(input integer i);
+        return i + 1;
+    endfunction
+endmodule
+
+module test;
+    function integer f2(input integer i);
+        return m1.f1(i);
+    endfunction
+    localparam p = f2(1);
+endmodule
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+
+    auto& diags = compilation.getAllDiagnostics();
+    REQUIRE(diags.size() == 1);
+    CHECK(diags[0].code == diag::ConstEvalHierarchicalName);
+}

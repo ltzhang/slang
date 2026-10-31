@@ -57,6 +57,10 @@ public:
     /// The subroutine that is being called.
     Subroutine subroutine;
 
+    /// True if the subroutine was named by a hierarchical reference (`inst.f()`), which a
+    /// constant expression may not contain (LRM 13.4.3).
+    bool isHierarchical = false;
+
     CallExpression(const Subroutine& subroutine, const Type& returnType,
                    const Expression* thisClass, std::span<const Expression*> arguments,
                    LookupLocation lookupLocation, SourceRange sourceRange) :
