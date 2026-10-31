@@ -3315,6 +3315,9 @@ UdpBodySyntax& Parser::parseUdpBody(bool isSequential) {
     }
 
     auto endtable = expect(TokenKind::EndTableKeyword);
+    // LRM A.5.3: a combinational or sequential table has at least one entry.
+    if (entries.empty() && !table.isMissing() && !endtable.isMissing())
+        addDiag(diag::EmptyUdpTable, endtable.location());
     return factory.udpBody({alloc, portDecls}, initial, table, {alloc, entries}, endtable);
 }
 

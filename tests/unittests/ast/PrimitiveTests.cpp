@@ -755,3 +755,21 @@ endprimitive
     REQUIRE(diags.size() == 1);
     CHECK(diags[0].code == diag::UdpCoverage);
 }
+
+TEST_CASE("UDP empty table") {
+    auto tree = SyntaxTree::fromText(R"(
+primitive p (o, i);
+    output o;
+    input i;
+    table
+    endtable
+endprimitive
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+
+    auto& diags = compilation.getAllDiagnostics();
+    REQUIRE(diags.size() == 1);
+    CHECK(diags[0].code == diag::EmptyUdpTable);
+}
