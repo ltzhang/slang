@@ -1144,6 +1144,22 @@ void Compilation::addOutOfBlockDecl(const Scope& scope, const ScopedNameSyntax& 
 
     std::string_view className = name.left->getLastToken().valueText();
     std::string_view declName = name.right->getLastToken().valueText();
+    if (name.left->kind == SyntaxKind::ScopedName) {
+        // A nested class's method (`outer::inner::f`, LRM 8.24): keyed by the qualified
+        // class name, as the nested class looks it up.
+        SmallVector<std::string_view> parts;
+        const NameSyntax* n = name.left.get();
+        while (n->kind == SyntaxKind::ScopedName) {
+            parts.push_back(n->as<ScopedNameSyntax>().right->getLastToken().valueText());
+            n = n->as<ScopedNameSyntax>().left.get();
+        }
+        parts.push_back(n->getLastToken().valueText());
+        std::string q;
+        for (size_t k = parts.size(); k-- > 0;)
+            q += (q.empty() ? "" : "::") + std::string(parts[k]);
+        auto copy = copyFrom(std::span<const char>(q.data(), q.size()));
+        className = std::string_view(copy.data(), copy.size());
+    }
     auto [it, inserted] = outOfBlockDecls.emplace(std::make_tuple(className, declName, &scope),
                                                   std::make_tuple(&syntax, &name, index, false));
 
@@ -1557,6 +1573,14 @@ void Compilation::elaborate() {
             auto& [syntax, name, index, used] = val;
             if (!used) {
                 auto& [className, declName, scope] = key;
+                if (name->left->kind == SyntaxKind::ScopedName) {
+                    // A nested class's method (`outer::inner::f`) no prototype took.
+                    if (!declName.empty() && !className.empty()) {
+                        auto& diag = scope->addDiag(diag::NoDeclInClass, name->sourceRange());
+                        diag << declName << className;
+                    }
+                    continue;
+                }
                 auto classRange = name->left->sourceRange();
                 auto sym = Lookup::unqualifiedAt(*scope, className,
                                                  LookupLocation(scope, uint32_t(index)),

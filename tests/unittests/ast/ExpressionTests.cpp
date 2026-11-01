@@ -4230,3 +4230,28 @@ logic b = a['dx];
             ^~~
 )");
 }
+
+TEST_CASE("Assignment pattern keyed by a package-scoped type name") {
+    auto tree = SyntaxTree::fromText(R"(
+package Pkg;
+    typedef enum { RED, GREEN, BLUE } color_t;
+    typedef struct { color_t a; color_t b; int c; } two_t;
+endpackage
+module m;
+    Pkg::two_t s = '{Pkg::color_t: Pkg::BLUE, default: 0};
+    Pkg::two_t t = '{Pkg::nope: 1};
+endmodule
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+
+    // `s` binds (its key a ps_type_identifier, LRM 10.9.2); `t`'s key names no type.
+    auto& diags = compilation.getAllDiagnostics();
+    bool unknown = false;
+    for (auto& d : diags) {
+        CHECK(d.code != diag::AssignmentPatternKeyExpr);
+        unknown |= d.code == diag::UnknownPackageMember;
+    }
+    CHECK(unknown);
+}

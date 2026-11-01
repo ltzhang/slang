@@ -654,6 +654,65 @@ endfunction
     CHECK(init->eval(ctx).integer() == 1);
 }
 
+TEST_CASE("Out-of-block methods of nested classes") {
+    auto tree = SyntaxTree::fromText(R"(
+class Cls;
+    class SubCls;
+        int value = 3;
+        extern function int f();
+        extern task t(int in);
+    endclass
+    extern function int g();
+endclass
+
+function int Cls::g();
+    return 1;
+endfunction
+
+function int Cls::SubCls::f();
+    return value + 10;
+endfunction
+
+task Cls::SubCls::t(int in);
+    value = in;
+endtask
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+    NO_COMPILATION_ERRORS;
+}
+
+TEST_CASE("Out-of-block methods of nested classes -- errors") {
+    auto tree = SyntaxTree::fromText(R"(
+class Cls;
+    class SubCls;
+        extern function int f();
+    endclass
+endclass
+
+function int Cls::SubCls::f();
+    return 1;
+endfunction
+
+function int Cls::SubCls::missing();
+    return 2;
+endfunction
+
+function int Other::SubCls::f();
+    return 3;
+endfunction
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+
+    auto& diags = compilation.getAllDiagnostics();
+    REQUIRE(diags.size() == 2);
+    CHECK(diags[0].code == diag::NoDeclInClass);
+    CHECK(diags[1].code == diag::NoDeclInClass);
+}
+
 TEST_CASE("This handle in extern method default arg") {
     auto tree = SyntaxTree::fromText(R"(
 class A;

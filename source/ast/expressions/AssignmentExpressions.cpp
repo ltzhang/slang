@@ -1370,8 +1370,20 @@ Expression& StructuredAssignmentPatternExpression::forStruct(
             }
         }
         else {
-            context.addDiag(diag::AssignmentPatternKeyExpr, item->key->sourceRange());
-            bad = true;
+            // A scoped type name (`pkg::t: value`, LRM 10.9.2: a ps_type_identifier is a
+            // simple_type), bound as the array form binds its keys.
+            auto& keyExpr = Expression::bind(*item->key, context, ASTFlags::AllowDataType);
+            if (!keyExpr.bad() && keyExpr.kind == ExpressionKind::DataType &&
+                item->key->kind == SyntaxKind::ScopedName) {
+                auto& expr = bindRValue(*keyExpr.type, *item->expr, {}, context);
+                typeSetters.emplace_back(TypeSetter{keyExpr.type, &expr});
+                bad |= expr.bad();
+            }
+            else {
+                if (!keyExpr.bad())
+                    context.addDiag(diag::AssignmentPatternKeyExpr, item->key->sourceRange());
+                bad = true;
+            }
         }
     }
 

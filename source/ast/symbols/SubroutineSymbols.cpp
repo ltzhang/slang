@@ -1155,8 +1155,34 @@ const SubroutineSymbol* MethodPrototypeSymbol::getSubroutine() const {
     SLANG_ASSERT(!flags.has(MethodFlags::ModportImport | MethodFlags::ModportExport |
                             MethodFlags::InterfaceExtern));
 
-    // The out-of-block definition must be in our parent scope.
+    // The out-of-block definition must be in our parent scope; for a method of a nested
+    // class, in the scope holding the outermost class, its name qualified by each class
+    // (`outer::inner::f`, LRM 8.24 class_scope).
     auto [declSyntax, index, used] = comp.findOutOfBlockDecl(outerScope, parentSym.name, name);
+    const Scope* defScope = &outerScope;
+    const Symbol* defSym = &parentSym;
+    if (!declSyntax && outerScope.asSymbol().kind == SymbolKind::ClassType) {
+        SmallVector<std::string_view> chain;  // innermost class first
+        chain.push_back(parentSym.name);
+        const Symbol* outer = &parentSym;
+        while (outer->getParentScope() &&
+               outer->getParentScope()->asSymbol().kind == SymbolKind::ClassType) {
+            outer = &outer->getParentScope()->asSymbol();
+            chain.push_back(outer->name);
+        }
+        std::string q;  // the qualified class name, outermost first
+        for (size_t k = chain.size(); k-- > 0;)
+            q += (q.empty() ? "" : "::") + std::string(chain[k]);
+        auto [ds, di, du] = comp.findOutOfBlockDecl(*outer->getParentScope(), q, name);
+        const bool match = ds != nullptr;
+        if (match) {
+            declSyntax = ds;
+            index = di;
+            used = du;
+            defScope = outer->getParentScope();
+            defSym = outer;
+        }
+    }
     const FunctionDeclarationSyntax* syntax = nullptr;
     if (declSyntax && (declSyntax->kind == SyntaxKind::FunctionDeclaration ||
                        declSyntax->kind == SyntaxKind::TaskDeclaration)) {
@@ -1185,14 +1211,14 @@ const SubroutineSymbol* MethodPrototypeSymbol::getSubroutine() const {
     }
 
     // The method definition must be located after the class definition.
-    if (index <= parentSym.getIndex()) {
-        auto& diag = outerScope.addDiag(diag::MemberDefinitionBeforeClass,
-                                        syntax->prototype->name->getLastToken().location());
+    if (index <= defSym->getIndex()) {
+        auto& diag = defScope->addDiag(diag::MemberDefinitionBeforeClass,
+                                       syntax->prototype->name->getLastToken().location());
         diag << name << parentSym.name;
         diag.addNote(diag::NoteDeclarationHere, parentSym.location);
     }
 
-    subroutine = &SubroutineSymbol::createOutOfBlock(comp, *syntax, *this, nearScope, outerScope,
+    subroutine = &SubroutineSymbol::createOutOfBlock(comp, *syntax, *this, nearScope, *defScope,
                                                      index);
     return *subroutine;
 }

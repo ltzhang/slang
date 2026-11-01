@@ -479,16 +479,16 @@ function C::D::baz();
 endfunction
 )";
 
+    // (`C::D::baz` names a method of nested class C::D: LRM 8.24 class_scope.)
     parseCompilationUnit(text);
 
-    REQUIRE(diagnostics.size() == 7);
+    REQUIRE(diagnostics.size() == 6);
     CHECK(diagnostics[0].code == diag::TaskReturnType);
     CHECK(diagnostics[1].code == diag::ExpectedSubroutineName);
     CHECK(diagnostics[2].code == diag::TaskConstructor);
     CHECK(diagnostics[3].code == diag::ConstructorReturnType);
     CHECK(diagnostics[4].code == diag::NewKeywordQualified);
     CHECK(diagnostics[5].code == diag::ConstructorOutsideClass);
-    CHECK(diagnostics[6].code == diag::ExpectedSubroutineName);
 }
 
 TEST_CASE("super.new parsing") {

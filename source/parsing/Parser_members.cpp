@@ -723,8 +723,16 @@ static bool checkSubroutineName(const NameSyntax& name) {
     };
 
     if (name.kind == SyntaxKind::ScopedName) {
+        // (`outer::inner::f`: a method of a nested class, LRM 8.24 class_scope.)
         auto& scoped = name.as<ScopedNameSyntax>();
-        return checkKind(*scoped.left) && checkKind(*scoped.right);
+        const NameSyntax* left = scoped.left.get();
+        while (left->kind == SyntaxKind::ScopedName &&
+               left->as<ScopedNameSyntax>().separator.kind == TokenKind::DoubleColon) {
+            if (left->as<ScopedNameSyntax>().right->kind != SyntaxKind::IdentifierName)
+                return false;
+            left = left->as<ScopedNameSyntax>().left.get();
+        }
+        return checkKind(*left) && checkKind(*scoped.right);
     }
 
     return checkKind(name);
