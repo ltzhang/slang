@@ -166,9 +166,15 @@ enum class SLANG_EXPORT CompilationFlags {
     /// bits; a simulator's memory models, e.g. a 2^28-entry 64-bit RAM), whereas without
     /// this flag slang rejects them as an implementation limit. Bit-stream operations on
     /// such an array still report the limit where they need its whole width.
-    LargeUnpackedArrays = 1 << 23
+    LargeUnpackedArrays = 1 << 23,
+
+    /// A type name or the prefix of a class scope resolution (`name::`) that finds a
+    /// subroutine continues the lookup in the enclosing scopes (a class's method named after
+    /// another class hides it there, IEEE 1800-2023 23.9; commercial simulators find the
+    /// class), whereas without this flag the subroutine is found and the name is an error.
+    TypeLookupSkipsSubroutines = 1 << 24
 };
-SLANG_BITMASK(CompilationFlags, LargeUnpackedArrays)
+SLANG_BITMASK(CompilationFlags, TypeLookupSkipsSubroutines)
 
 /// Contains various options that can control compilation behavior.
 struct SLANG_EXPORT CompilationOptions {

@@ -1988,9 +1988,20 @@ void Lookup::unqualifiedImpl(const Scope& scope, std::string_view name, LookupLo
                     // If we find a forwarding typedef, the actual typedef was never defined.
                     // Just ignore it, we'll issue a better error later.
                     break;
+                case SymbolKind::Subroutine:
                 case SymbolKind::MethodPrototype:
-                    // Looking up a prototype should always forward on to the actual method.
-                    result.found = symbol->as<MethodPrototypeSymbol>().getSubroutine();
+                    if (flags.has(LookupFlags::Type | LookupFlags::ScopePrefix) &&
+                        scope.getCompilation().hasFlag(CompilationFlags::TypeLookupSkipsSubroutines)) {
+                        // (a type or scope name: the subroutine does not hide it)
+                        done = false;
+                    }
+                    else if (symbol->kind == SymbolKind::MethodPrototype) {
+                        // Looking up a prototype should always forward on to the actual method.
+                        result.found = symbol->as<MethodPrototypeSymbol>().getSubroutine();
+                    }
+                    else {
+                        result.found = symbol;
+                    }
                     break;
                 case SymbolKind::ModportClocking:
                     result.found = symbol->as<ModportClockingSymbol>().target;
@@ -2213,7 +2224,8 @@ void Lookup::qualified(const ScopedNameSyntax& syntax, const ASTContext& context
         case SyntaxKind::IdentifierSelectName:
         case SyntaxKind::ClassName:
             // Start by trying to find the first name segment using normal unqualified lookup
-            unqualifiedImpl(scope, name, context.getLocation(), first.range, flags, {}, result,
+            unqualifiedImpl(scope, name, context.getLocation(), first.range,
+                            colonParts ? flags | LookupFlags::ScopePrefix : flags, {}, result,
                             scope, nullptr);
             break;
         case SyntaxKind::UnitScope: {

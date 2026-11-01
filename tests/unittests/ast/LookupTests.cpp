@@ -2878,3 +2878,34 @@ endmodule
     auto& jSym = body.find<VariableSymbol>("j");
     CHECK(jSym.getInitializer() == nullptr);
 }
+
+TEST_CASE("Type lookup skips a subroutine of the same name (TypeLookupSkipsSubroutines)") {
+    // A class's method named after another class hides it there (an error without the
+    // flag); commercial simulators find the class for a type or a class scope prefix.
+    auto text = R"(
+class setup;
+    static function setup create(); setup s = new; return s; endfunction
+endclass
+class vseq;
+    setup c_setup = setup::create();
+    function void setup(); endfunction
+    function void run(); setup(); endfunction
+endclass
+)";
+    {
+        auto tree = SyntaxTree::fromText(text);
+        Compilation compilation;
+        compilation.addSyntaxTree(tree);
+        auto& diags = compilation.getAllDiagnostics();
+        REQUIRE(!diags.empty());
+        CHECK(diags[0].code == diag::NotAType);
+    }
+    {
+        auto tree = SyntaxTree::fromText(text);
+        CompilationOptions options;
+        options.flags |= CompilationFlags::TypeLookupSkipsSubroutines;
+        Compilation compilation(options);
+        compilation.addSyntaxTree(tree);
+        NO_COMPILATION_ERRORS;
+    }
+}
