@@ -1085,6 +1085,9 @@ module m;
         $sdf_annotate(s, m, "asdf", "test", "TOOL_CONTROL", "1.0:1.0:1.0", "FROM_MTM");
         $sdf_annotate(s, 123);
         $sdf_annotate(s, s);
+        $sdf_annotate("sdf", m, , "log", "MAXIMUM");
+        $sdf_annotate("sdf", , , , "MINIMUM", , );
+        $sdf_annotate("sdf", m, 3.5);
     end
 endmodule
 )");
@@ -1093,9 +1096,10 @@ endmodule
     compilation.addSyntaxTree(tree);
 
     auto& diags = compilation.getAllDiagnostics();
-    REQUIRE(diags.size() == 2);
+    REQUIRE(diags.size() == 3);
     CHECK(diags[0].code == diag::ExpectedModuleInstance);
     CHECK(diags[1].code == diag::ExpectedModuleInstance);
+    CHECK(diags[2].code == diag::BadSystemSubroutineArg);
 }
 
 TEST_CASE("Tracing automatic vars") {
