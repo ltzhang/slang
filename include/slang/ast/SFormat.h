@@ -32,6 +32,9 @@ struct FormatOptions {
     /// Set to true to zero pad instead of space pad the field within its
     /// specified width.
     bool zeroPad = false;
+
+    /// %p prints integral values as unsized decimal (CompilationFlags::PatternValuesDecimal).
+    bool patternDecimal = false;
 };
 
 /// Parse the given formatString and call the provided callbacks for each parsed portion.

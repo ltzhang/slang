@@ -1777,6 +1777,33 @@ endfunction
     NO_SESSION_ERRORS;
 }
 
+TEST_CASE("%p of integral values as unsized decimal under PatternValuesDecimal") {
+    // A simulator's %p (decimal like %0d, 21.2.1.3 digits for x and z) instead of sized
+    // literals; enum members by name, strings and reals unchanged.
+    CompilationOptions options;
+    options.flags |= CompilationFlags::PatternValuesDecimal;
+    Bag bag(options);
+    ScriptSession session(bag);
+    session.eval("typedef struct packed { logic [3:0] a; logic [3:0] b; } ps_t;");
+    session.eval("typedef enum logic [6:0] { A = 7'd0, B = 7'd1 } e_t;");
+    session.eval("typedef logic [7:0] arr_t [2];");
+    auto f = [&](std::string_view expr) {
+        return session.eval("$sformatf(\"%p\", " + std::string(expr) + ")").str();
+    };
+    CHECK(f("8'd200") == "200");
+    CHECK(f("-8'sd5") == "-5");
+    CHECK(f("8'b1x0z_0000") == "X");
+    CHECK(f("4'bxxxx") == "x");
+    CHECK(f("65'h1_0000_0000_0000_0001") == "18446744073709551617");
+    CHECK(f("ps_t'(8'h3c)") == "60");
+    CHECK(f("e_t'(7'd2)") == "2");
+    CHECK(f("B") == "B");
+    CHECK(f("arr_t'('{8'd1, 8'd200})") == "'{1, 200}");
+    CHECK(f("1.25") == "1.25");
+    CHECK(f("\"ab\"") == "\"ab\"");
+    NO_SESSION_ERRORS;
+}
+
 TEST_CASE("Complicated lvalue path") {
     ScriptSession session;
     session.eval(R"(

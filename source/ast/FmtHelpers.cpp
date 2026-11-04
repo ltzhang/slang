@@ -7,6 +7,7 @@
 //------------------------------------------------------------------------------
 #include "FmtHelpers.h"
 
+#include "slang/ast/Compilation.h"
 #include "slang/ast/EvalContext.h"
 #include "slang/ast/Expression.h"
 #include "slang/ast/SFormat.h"
@@ -260,7 +261,10 @@ std::optional<std::string> FmtHelpers::formatArgs(std::string_view formatString,
                 return;
             }
 
-            SFormat::formatArg(result, value, *arg->type, spec, options, arg->isImplicitString());
+            auto opts = options;
+            opts.patternDecimal = scope.getCompilation().hasFlag(
+                CompilationFlags::PatternValuesDecimal);
+            SFormat::formatArg(result, value, *arg->type, spec, opts, arg->isImplicitString());
         },
         [&](DiagCode code, size_t, size_t, std::optional<char> specifier) {
             // If this is from a string literal format string we already checked
@@ -337,7 +341,10 @@ std::optional<std::string> FmtHelpers::formatDisplay(
                             return;
                         }
 
-                        SFormat::formatArg(result, value, *currentArg->type, specifier, options,
+                        auto opts = options;
+                        opts.patternDecimal = scope.getCompilation().hasFlag(
+                            CompilationFlags::PatternValuesDecimal);
+                        SFormat::formatArg(result, value, *currentArg->type, specifier, opts,
                                            currentArg->isImplicitString());
                     }
                 },
@@ -353,8 +360,11 @@ std::optional<std::string> FmtHelpers::formatDisplay(
             if (!value)
                 return std::nullopt;
 
+            SFormat::FormatOptions opts;
+            opts.patternDecimal = scope.getCompilation().hasFlag(
+                CompilationFlags::PatternValuesDecimal);
             SFormat::formatArg(result, value, *arg->type,
-                               getDefaultSpecifier(*arg, LiteralBase::Decimal), {},
+                               getDefaultSpecifier(*arg, LiteralBase::Decimal), opts,
                                arg->isImplicitString());
         }
     }

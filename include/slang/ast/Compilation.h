@@ -172,7 +172,14 @@ enum class SLANG_EXPORT CompilationFlags {
     /// subroutine continues the lookup in the enclosing scopes (a class's method named after
     /// another class hides it there, IEEE 1800-2023 23.9; commercial simulators find the
     /// class), whereas without this flag the subroutine is found and the name is an error.
-    TypeLookupSkipsSubroutines = 1 << 24
+    TypeLookupSkipsSubroutines = 1 << 24,
+
+    /// Format integral values in a constant evaluation of %p the way a simulator formats them
+    /// at run time: unsized decimal like %0d (packed structures and unions as one value, an
+    /// enumeration's value without a member name as such a number; x and z as %d prints
+    /// them, IEEE 1800-2023 21.2.1.3), whereas without this flag slang prints sized
+    /// literals ('{8'd8} for a four-state element, '{a:4'b11} for a packed structure).
+    PatternValuesDecimal = 1 << 25
 };
 SLANG_BITMASK(CompilationFlags, TypeLookupSkipsSubroutines)
 

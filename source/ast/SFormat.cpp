@@ -356,9 +356,22 @@ void formatStrength(std::string& result, const SVInt& value) {
 struct TypeVisitor {
     bool abbreviated;
     bool isStringLiteral;
+    bool decimal;
 
-    TypeVisitor(bool abbreviated, bool isStringLiteral) :
-        abbreviated(abbreviated), isStringLiteral(isStringLiteral) {}
+    TypeVisitor(bool abbreviated, bool isStringLiteral, bool decimal) :
+        abbreviated(abbreviated), isStringLiteral(isStringLiteral), decimal(decimal) {}
+
+    // An integral value as unsized decimal like %0d (PatternValuesDecimal); false: not one.
+    bool appendDecimal(const ConstantValue& arg) {
+        if (!decimal || !arg.isInteger())
+            return false;
+        std::string text;
+        FormatOptions options;
+        options.width = 0;
+        formatInt(text, arg.integer(), LiteralBase::Decimal, options);
+        buffer.append(text);
+        return true;
+    }
 
     void visit(const EnumType& type, const ConstantValue& arg) {
         for (auto& member : type.values()) {
@@ -367,10 +380,13 @@ struct TypeVisitor {
                 return;
             }
         }
-        buffer.append(arg.toString());
+        if (!appendDecimal(arg))
+            buffer.append(arg.toString());
     }
 
     void visit(const PackedStructType& type, const ConstantValue& arg) {
+        if (appendDecimal(arg))
+            return;
         if (arg) {
             auto& value = arg.integer();
             auto currOffset = int32_t(value.getBitWidth());
@@ -430,6 +446,8 @@ struct TypeVisitor {
     }
 
     void visit(const PackedUnionType& type, const ConstantValue& arg) {
+        if (appendDecimal(arg))
+            return;
         // LRM says the value is printed with the type of the first member.
         auto fields = type.membersOfType<FieldSymbol>();
         if (!fields.empty())
@@ -498,6 +516,8 @@ struct TypeVisitor {
 
     template<typename T>
     void visit(const T&, const ConstantValue& arg) {
+        if (!isStringLiteral && appendDecimal(arg))
+            return;
         if (isStringLiteral)
             buffer.append(arg.convertToStr().toString());
         else
@@ -526,7 +546,7 @@ struct TypeVisitor {
 
 void formatPattern(std::string& result, const ConstantValue& arg, const Type& type,
                    const FormatOptions& options, bool isStringLiteral) {
-    TypeVisitor visitor(options.zeroPad, isStringLiteral);
+    TypeVisitor visitor(options.zeroPad, isStringLiteral, options.patternDecimal);
     type.visit(visitor, arg);
     result += visitor.buffer.str();
 }
