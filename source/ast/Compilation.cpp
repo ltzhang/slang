@@ -2072,7 +2072,13 @@ void Compilation::checkExternIfaceMethods(std::span<const MethodPrototypeSymbol*
             auto scope = proto->getParentScope();
             SLANG_ASSERT(scope);
 
+            // The body standing for a virtual interface type (InstanceFlags::Virtual) is
+            // no instance: the instances a virtual interface designates have the bodies.
             auto& parent = scope->asSymbol();
+            if (parent.kind == SymbolKind::InstanceBody &&
+                parent.as<InstanceBodySymbol>().flags.has(InstanceFlags::Virtual)) {
+                continue;
+            }
             if (!parent.name.empty() && !proto->name.empty()) {
                 auto& diag = scope->addDiag(diag::MissingExternImpl, proto->location);
                 diag << SemanticFacts::getSubroutineKindStr(proto->subroutineKind);

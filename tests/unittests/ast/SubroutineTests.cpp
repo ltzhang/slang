@@ -632,6 +632,35 @@ endmodule
     CHECK(diags[10].code == diag::NotAnInterfaceOrPort);
 }
 
+TEST_CASE("Extern iface method through a virtual interface") {
+    // The body standing for the virtual interface type has no exporter of its own (LRM
+    // 25.7.4, 25.9): only the instances need one.
+    auto tree = SyntaxTree::fromText(R"(
+interface I;
+    extern task t(int i);
+    modport tg(export t);
+endinterface
+
+module tgt(I.tg b);
+    task b.t(int i); endtask
+endmodule
+
+module top;
+    I i();
+    tgt x(i);
+    virtual I vi;
+    initial begin
+        vi = i;
+        vi.t(1);
+    end
+endmodule
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+    NO_COMPILATION_ERRORS;
+}
+
 TEST_CASE("Extern iface method for iface array") {
     auto tree = SyntaxTree::fromText(R"(
 interface I;
