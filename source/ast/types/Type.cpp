@@ -1372,6 +1372,16 @@ const Type& Type::fromLookupResult(Compilation& comp, const LookupResult& result
         return comp.getErrorType();
     }
 
+    // A type parameter is a type name too: like a typedef it cannot be referenced through a
+    // hierarchical path (LRM 6.18, 23.6). Lookup unwraps it into its type alias before the
+    // check there, so it is made here, where the name binds as a type (Scope::lookupName of a
+    // type parameter by its hierarchical path stays valid).
+    if (result.flags.has(LookupResultFlags::IsHierarchical) &&
+        result.flags.has(LookupResultFlags::FromTypeParam)) {
+        context.addDiag(diag::TypeHierarchical, sourceRange);
+        return comp.getErrorType();
+    }
+
     const Type* finalType = &symbol->as<Type>();
     size_t count = result.selectors.size();
     for (size_t i = 0; i < count; i++) {

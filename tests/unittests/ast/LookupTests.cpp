@@ -1959,6 +1959,38 @@ endmodule
     CHECK(diags[0].code == diag::TypeHierarchical);
 }
 
+TEST_CASE("Hierarchical lookup of a type parameter") {
+    // LRM 6.18: a type parameter is a type name; ivtest sv_type_identifier_hier_fail. The
+    // plain name and Scope::lookupName of the hierarchical path stay valid.
+    auto tree = SyntaxTree::fromText(R"(
+module test #(parameter type T = logic);
+  localparam integer WIDTH = $bits(test.T);
+  localparam integer OK = $bits(T);
+  var type(top.u.U) v;
+endmodule
+
+module sub #(parameter type U = byte);
+endmodule
+
+module top;
+  test t();
+  sub u();
+endmodule
+)");
+
+    Compilation compilation;
+    compilation.addSyntaxTree(tree);
+
+    auto& diags = compilation.getAllDiagnostics();
+    std::vector<SourceLocation> found;
+    for (auto& d : diags) {
+        if (d.code == diag::TypeHierarchical)
+            found.push_back(d.location);
+    }
+    CHECK(found.size() == 2);
+    CHECK(compilation.getRoot().lookupName("top.u.U") != nullptr);
+}
+
 TEST_CASE("$unit is not hierarchical") {
     auto tree = SyntaxTree::fromText(R"(
 typedef int foo;
